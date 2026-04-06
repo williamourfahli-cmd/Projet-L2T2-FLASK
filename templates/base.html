@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>{% block title %}EmoTrack{% endblock %}</title>
+```
+<style>
+    :root {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --surface: #334155;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --primary: #7c3aed;
+        --primary-2: #06b6d4;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --border: rgba(255,255,255,0.08);
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, var(--bg), #111827);
+        color: var(--text);
+        min-height: 100vh;
+    }
+
+    .container {
+        width: min(92%, 520px);
+        margin: 48px auto;
+        background: rgba(30, 41, 59, 0.95);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 16px 40px rgba(0,0,0,.25);
+    }
+
+    .dashboard {
+        width: min(94%, 980px);
+        margin: 32px auto;
+        background: rgba(30, 41, 59, 0.95);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 16px 40px rgba(0,0,0,.25);
+    }
+
+    h1, h2 {
+        margin-top: 0;
+    }
+
+    p {
+        color: var(--muted);
+    }
+
+    label {
+        display: block;
+        margin: 14px 0 6px;
+        font-size: 0.95rem;
+    }
+
+    input {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: #0b1220;
+        color: var(--text);
+    }
+
+    input:focus {
+        outline: 2px solid rgba(124,58,237,.35);
+        border-color: var(--primary);
+    }
+
+    .btn {
+        display: inline-block;
+        width: 100%;
+        margin-top: 18px;
+        padding: 12px 16px;
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    }
+
+    .btn.secondary {
+        background: var(--surface);
+    }
+
+    .links {
+        margin-top: 14px;
+        text-align: center;
+    }
+
+    a {
+        color: #c4b5fd;
+        text-decoration: none;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+    .flash {
+        padding: 12px 14px;
+        border-radius: 10px;
+        margin-bottom: 14px;
+        font-size: 0.95rem;
+    }
+
+    .flash.success {
+        background: rgba(16,185,129,.12);
+        border: 1px solid rgba(16,185,129,.35);
+    }
+
+    .flash.warning {
+        background: rgba(245,158,11,.12);
+        border: 1px solid rgba(245,158,11,.35);
+    }
+
+    .flash.error {
+        background: rgba(239,68,68,.12);
+        border: 1px solid rgba(239,68,68,.35);
+    }
+
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .pill {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: #0b1220;
+        color: var(--muted);
+        font-size: .9rem;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .card {
+        background: #0b1220;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+    }
+
+    .muted {
+        color: var(--muted);
+    }
+
+    @media (max-width: 700px) {
+        .grid {
+            grid-template-columns: 1fr;
+        }
+    }
+     /* ===== JOIN SESSION ===== */
+
+    #codeInput {
+        text-align: center;
+        font-size: 1.2rem;
+        letter-spacing: 5px;
+        font-weight: bold;
+    }
+
+    #codeInput:focus {
+        transform: scale(1.03);
+        transition: 0.2s;
+    }
+
+    input[type="checkbox"] {
+        transform: scale(1);
+        cursor: pointer;
+    }
+</style>
+
+</head>
+
+<body>
+    {% block body %}{% endblock %}
+    {% if session.get("user_id") and not session.get("consent_given") %}
+    <div id="consentModal" style="
+        display:none;
+        position:fixed;
+        top:0;
+        left:0;
+        width:100%;
+        height:100%;
+        background:rgba(0,0,0,0.7);
+        backdrop-filter: blur(4px);
+        justify-content:center;
+        align-items:center;
+    ">
+
+        <div style="
+            background: var(--card);
+            color: var(--text);
+            padding: 24px;
+            width: 50%;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        ">
+
+        <h2>🔐 Utilisation des données</h2>
+
+        <p>Cette application collecte certaines données pour améliorer l’expérience pédagogique.</p>
+
+        <h3>📷 Analyse webcam (DeepFace)</h3>
+        <p>
+        Si vous activez votre webcam, DeepFace analyse vos expressions pour estimer vos émotions.
+        Aucune image n’est stockée.
+        </p>
+
+        <h3>💾 Données stockées</h3>
+        <ul>
+        <li>Participation aux sessions</li>
+        <li>Réponses aux questionnaires</li>
+        <li>Mesures émotionnelles</li>
+        </ul>
+
+        <button class="btn" onclick="acceptConsent()">J'accepte</button>
+
+  </div>
+</div>
+
+<script>
+function acceptConsent() {
+    fetch("/consent", {
+        method: "POST"})
+        .then(response => {
+    if (response.ok) {
+        document.getElementById("consentModal").style.display = "none";
+        document.body.style.overflow = "auto";
+    } else {
+        alert("Erreur lors de l'enregistrement du consentement.");
+    }
+    });
+}
+
+window.onload = function() {
+    let modal = document.getElementById("consentModal");
+    if (modal) {
+        modal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+    }
+}
+</script>
+{% endif %}
+</body>
+
+</html>
+

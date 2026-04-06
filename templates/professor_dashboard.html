@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Professeur - EmoTrack{% endblock %}
+{% block body %}
+<div class="dashboard">
+    <div class="topbar">
+        <div>
+            <h1>Bienvenue {{ session.first_name }} {{ session.last_name }}</h1>
+        </div>
+        <div>
+            <span class="pill">Professeur</span>
+            <a class="btn secondary" style="width:auto; margin-left:5px;" href="{{ url_for('logout') }}">Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Compte</h2>
+            <p><strong>Nom :</strong> {{ session.last_name }}</p>
+            <p><strong>Prénom :</strong> {{ session.first_name }}</p>
+            <p><strong>Email :</strong> {{ session.email }}</p>
+        </div>
+        <div class="card">
+            <h2>Créer une session</h2>
+
+            <form id="createSessionForm" method="POST" action="/create_session">
+
+                <label>Fréquence questionnaire (minutes)</label>
+                <input type="number" id="freqQ" name="freq_questionnaire" min="1" required>
+
+                <label>Fréquence analyse webcam (secondes)</label>
+                <input type="number" id="freqW" name="freq_webcam" min="1" required>
+
+                <label>Mode d'affichage</label>
+                <select name="mode_affichage" id="modeAffichage">
+                    <option value="courbes">Courbes</option>
+                    <option value="moyennes">Moyennes</option>
+                    <option value="alertes">Alertes</option>
+                </select>
+
+                <div id="errorMsgProf" style="color: var(--danger); display:none; margin-top:10px;"></div>
+
+                <button class="btn" type="submit">Créer la session</button>
+
+            </form>
+
+            {% if code_session %}
+                <p><strong>Code session :</strong> {{ code_session }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+const form = document.getElementById("createSessionForm");
+const freqQ = document.getElementById("freqQ");
+const freqW = document.getElementById("freqW");
+const errorMsg = document.getElementById("errorMsgProf");
+
+if (form && freqQ && freqW && errorMsg) {
+
+    form.addEventListener("submit", (e) => {
+
+        const q = parseInt(freqQ.value);
+        const w = parseInt(freqW.value);
+
+        if (q <= 0 || w <= 0) {
+            e.preventDefault();
+            errorMsg.style.display = "block";
+            errorMsg.innerText = "Les valeurs doivent être supérieures à 0.";
+            return;
+        }
+
+        if (q > 120) {
+            e.preventDefault();
+            errorMsg.style.display = "block";
+            errorMsg.innerText = "Fréquence questionnaire trop lente.";
+            return;
+        }
+
+        if (w > 300) {
+            e.preventDefault();
+            errorMsg.style.display = "block";
+            errorMsg.innerText = "Fréquence webcam trop lente.";
+            return;
+        }
+
+        errorMsg.style.display = "none";
+    });
+
+    // Feedback visuel
+    [freqQ, freqW].forEach(input => {
+        input.addEventListener("focus", () => {
+            input.style.transform = "scale(1.03)";
+        });
+
+        input.addEventListener("blur", () => {
+            input.style.transform = "scale(1)";
+        });
+    });
+}
+</script>
+{% endblock %}
+

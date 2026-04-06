@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Étudiant - EmoTrack{% endblock %}
+{% block body %}
+<div class="dashboard">
+    <div class="topbar">
+        <div>
+            <h1>Bienvenue {{ session.first_name }} {{ session.last_name }}</h1>
+        </div>
+        <div>
+            <span class="pill">Étudiant</span>
+            <a class="btn secondary" style="width:auto; margin-left:10px;" href="{{ url_for('logout') }}">Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Compte</h2>
+            <p><strong>Nom :</strong> {{ session.last_name }}</p>
+            <p><strong>Prénom :</strong> {{ session.first_name }}</p>
+            <p><strong>Email :</strong> {{ session.email }}</p>
+        </div>
+        <div class="card">
+            <h2>Rejoindre une session</h2>
+
+            <form id="joinForm" method="POST" action="/join_session">
+
+                <!-- Code session -->
+                <label>Code session</label>
+                <input 
+                    type="text" 
+                    name="code_session" 
+                    id="codeInput"
+                    placeholder="ABC123"
+                    maxlength="6"
+                    required
+                >
+
+                <!-- Options -->
+                <div style="margin-top:20px;">
+
+                    <label style="display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" name="anonyme">
+                        Rester anonyme
+                    </label>
+
+                    <label style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                        <input type="checkbox" name="webcam">
+                        Activer la webcam
+                    </label>
+
+                </div>
+
+                <!-- Erreur -->
+                <div id="errorMsg" style="color: var(--danger); display:none; margin-top:10px;"></div>
+
+                <!-- Bouton -->
+                <button class="btn">Rejoindre</button>
+
+            </form>
+            {% if message %}
+                <div class="flash success">
+                    {{ message }}
+                </div>
+            {% endif %}
+            
+            {% if message %}
+                <div class="flash error">
+                    {{ message }}
+                 </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+const form = document.getElementById("joinForm");
+const input = document.getElementById("codeInput");
+const errorMsg = document.getElementById("errorMsg");
+
+// Majuscules auto
+input.addEventListener("input", () => {
+    input.value = input.value.toUpperCase();
+});
+
+// Validation
+form.addEventListener("submit", (e) => {
+    const value = input.value.trim();
+
+    if (value.length !== 6) {
+        e.preventDefault();
+        errorMsg.style.display = "block";
+        errorMsg.innerText = "Le code doit contenir 6 caractères.";
+        input.style.borderColor = "var(--danger)";
+        return;
+    }
+
+    errorMsg.style.display = "none";
+    input.style.borderColor = "var(--border)";
+});
+
+input.addEventListener("focus", () => {
+    input.style.transform = "scale(1.03)";
+});
+
+input.addEventListener("blur", () => {
+    input.style.transform = "scale(1)";
+});
+
+</script>
+{% endblock %}
+
