@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
-from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User, Session, Participation, UserRole
+import os  
 import re
 import random
 import string
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from werkzeug.security import generate_password_hash, check_password_hash
+from models import db, User, Session, Participation, UserRole
 
 # ============================================================
 # INITIALISATION DE L'APPLICATION
@@ -11,14 +12,20 @@ import string
 
 app = Flask(__name__)
 
-# Configuration principale
-app.config["SECRET_KEY"] = "change-me-in-production"  # ⚠️ À mettre en variable d’environnement en production
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+# CONFIGURATION DYNAMIQUE 
+# On récupère l'URL de Render, sinon on utilise SQLite par défaut
+uri = os.environ.get("DATABASE_URL", "sqlite:///database.db")
+
+# Correction du bug de dialecte Postgres (Heroku/Render)
+if uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = uri
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me-in-production")
 
-# Initialisation de SQLAlchemy avec l'application Flask
+# Initialisation
 db.init_app(app)
-
 
 # ============================================================
 # FONCTIONS UTILITAIRES
