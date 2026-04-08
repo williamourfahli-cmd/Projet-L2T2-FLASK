@@ -427,4 +427,7 @@ with app.app_context():
     db.create_all()  # Création automatique des tables
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # On récupère le port dynamique de Render, sinon 5000 par défaut
+    port = int(os.environ.get("PORT", 5000))
+    # On force l'hôte à 0.0.0.0 pour accepter les connexions externes
+    app.run(host="0.0.0.0", port=port)
