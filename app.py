@@ -12,11 +12,9 @@ from models import db, User, Session, Participation, UserRole
 
 app = Flask(__name__)
 
-with app.app_context():
-    db.create_all()  # Création automatique des tables
-
-# CONFIGURATION DYNAMIQUE 
-# On récupère l'URL de Render, sinon on utilise SQLite par défaut
+# ==========================================
+# 1. CONFIGURATION DYNAMIQUE 
+# ==========================================
 uri = os.environ.get("DATABASE_URL", "sqlite:///database.db")
 
 # Correction du bug de dialecte Postgres (Heroku/Render)
@@ -27,8 +25,16 @@ app.config["SQLALCHEMY_DATABASE_URI"] = uri
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me-in-production")
 
-# Initialisation
+# ==========================================
+# 2. INITIALISATION 
+# ==========================================
 db.init_app(app)
+
+# ==========================================
+# 3. CRÉATION DES TABLES 
+# ==========================================
+with app.app_context():
+    db.create_all()  # Ici, Flask connaît enfin l'URI et db est lié à l'app
 
 # ============================================================
 # FONCTIONS UTILITAIRES
