@@ -12,6 +12,9 @@ from models import db, User, Session, Participation, UserRole
 
 app = Flask(__name__)
 
+with app.app_context():
+    db.create_all()  # Création automatique des tables
+
 # CONFIGURATION DYNAMIQUE 
 # On récupère l'URL de Render, sinon on utilise SQLite par défaut
 uri = os.environ.get("DATABASE_URL", "sqlite:///database.db")
@@ -423,8 +426,7 @@ def join_session():
 # ============================================================
 
 
-with app.app_context():
-    db.create_all()  # Création automatique des tables
+
 
 if __name__ == "__main__":
     # On récupère le port dynamique de Render, sinon 5000 par défaut
