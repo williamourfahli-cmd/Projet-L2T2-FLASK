@@ -120,6 +120,9 @@ class Session(db.Model):
     # Mode d'affichage des résultats (graph, moyenne, alerte)
     mode_affichage = db.Column(db.String(50), nullable=False)
 
+    # Bool montrant si la session est encore active
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+
     # ========================
     # RELATIONS ORM
     # ========================
@@ -187,4 +190,117 @@ class Participation(db.Model):
         db.DateTime,
         default=lambda: datetime.now(timezone.utc),
         nullable=False
+    )
+
+
+# ============================================================
+# TABLE QCM RESPONSES
+# ============================================================
+class QCMResponse(db.Model):
+    """
+    Représente une réponse d'un étudiant à un questionnaire (QCM).
+
+    Une réponse est liée :
+    - à une session
+    - à un étudiant
+    - à un moment (avant / pendant / après)
+
+    Cette table permet de suivre l'évolution des émotions
+    pendant toute la durée d'une session.
+    """
+
+    __tablename__ = 'qcm_responses'
+
+    # ========================
+    # CONTRAINTES
+    # ========================
+
+    # Empêche un étudiant d'envoyer plusieurs réponses
+    # pour la même phase et occurrence
+    __table_args__ = (
+        db.UniqueConstraint(
+            'session_id',
+            'user_id',
+            'phase',
+            'occurrence',
+            name='unique_qcm_response'
+        ),
+    )
+
+    # ========================
+    # COLONNES
+    # ========================
+
+    # Identifiant unique
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Clé étrangère vers la session
+    session_id = db.Column(
+        db.Integer,
+        db.ForeignKey('sessions.id'),
+        nullable=False
+    )
+
+    # Clé étrangère vers l'utilisateur (étudiant)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id'),
+        nullable=False
+    )
+
+    # Type de questionnaire :
+    # "avant", "pendant", "apres"
+    phase = db.Column(
+        db.String(20),
+        nullable=False
+    )
+
+    # Emotion sélectionnée (ex : "motivé", "fatigué")
+    emotion = db.Column(
+        db.String(50),
+        nullable=True
+    )
+
+    # Intensité émotionnelle (optionnel)
+    intensity = db.Column(
+        db.Integer,
+        nullable=True
+    )
+
+    # Valeur du slider (1 à 5 par exemple)
+    slider_value = db.Column(
+        db.Integer,
+        nullable=True
+    )
+
+    # Numéro d'occurrence (utile pour les QCM "pendant")
+    occurrence = db.Column(
+        db.Integer,
+        default=1,
+        nullable=False
+    )
+
+    # Date de réponse
+    answered_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+
+    # ========================
+    # RELATIONS ORM
+    # ========================
+
+    # Lien vers la session
+    session = db.relationship(
+        'Session',
+        backref='qcm_responses',
+        lazy=True
+    )
+
+    # Lien vers l'utilisateur
+    user = db.relationship(
+        'User',
+        backref='qcm_responses',
+        lazy=True
     )

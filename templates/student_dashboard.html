@@ -1,111 +1,113 @@
 {% extends "base.html" %}
-{% block title %}Dashboard Étudiant - EmoTrack{% endblock %}
+{% block title %}Dashboard Étudiant{% endblock %}
+
 {% block body %}
+
 <div class="dashboard">
+
+    <!-- HEADER -->
     <div class="topbar">
         <div>
             <h1>Bienvenue {{ session.first_name }} {{ session.last_name }}</h1>
         </div>
-        <div>
-            <span class="pill">Étudiant</span>
-            <a class="btn secondary" style="width:auto; margin-left:10px;" href="{{ url_for('logout') }}">Déconnexion</a>
-        </div>
+
+        <a class="btn secondary logout-btn" href="{{ url_for('logout') }}">
+            Déconnexion
+        </a>
     </div>
 
     <div class="grid">
+
+        <!-- COMPTE -->
         <div class="card">
             <h2>Compte</h2>
+
             <p><strong>Nom :</strong> {{ session.last_name }}</p>
             <p><strong>Prénom :</strong> {{ session.first_name }}</p>
             <p><strong>Email :</strong> {{ session.email }}</p>
         </div>
+
+        <!-- REJOINDRE SESSION -->
         <div class="card">
             <h2>Rejoindre une session</h2>
 
             <form id="joinForm" method="POST" action="/join_session">
 
-                <!-- Code session -->
                 <label>Code session</label>
                 <input 
-                    type="text" 
-                    name="code_session" 
+                    type="text"
                     id="codeInput"
+                    name="code_session"
                     placeholder="ABC123"
                     maxlength="6"
                     required
                 >
 
-                <!-- Options -->
-                <div style="margin-top:20px;">
-
-                    <label style="display:flex; align-items:center; gap:10px;">
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
                         <input type="checkbox" name="anonyme">
-                        Rester anonyme
+                        <span>Rester anonyme</span>
                     </label>
 
-                    <label style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                    <label class="checkbox-item">
                         <input type="checkbox" name="webcam">
-                        Activer la webcam
+                        <span>Activer la webcam</span>
                     </label>
-
                 </div>
 
-                <!-- Erreur -->
-                <div id="errorMsg" style="color: var(--danger); display:none; margin-top:10px;"></div>
+                <div id="errorMsg" class="error-msg"></div>
 
-                <!-- Bouton -->
                 <button class="btn">Rejoindre</button>
-
             </form>
-            {% if message %}
-                <div class="flash success">
-                    {{ message }}
-                </div>
-            {% endif %}
-            
-            {% if message %}
-                <div class="flash error">
-                    {{ message }}
-                 </div>
-            {% endif %}
         </div>
+
     </div>
+
+    <!-- SESSIONS -->
+    <div class="card" style="margin-top:20px;">
+        <h2>Mes sessions</h2>
+
+        {% for p in participations %}
+
+            <div style="margin-bottom:10px;">
+                <strong>{{ p.session.code_session }}</strong>
+                <!--
+                    Indicateur si session terminée
+                -->
+                {% if not p.session.is_active %}
+                    <p class="muted">Session terminée</p>
+                {% endif %}
+
+            </div>
+
+        {% else %}
+            <p class="muted">Aucune session rejointe</p>
+        {% endfor %}
+    </div>
+
 </div>
 
 <script>
+
+/*
+    Validation code session
+*/
 const form = document.getElementById("joinForm");
 const input = document.getElementById("codeInput");
 const errorMsg = document.getElementById("errorMsg");
 
-// Majuscules auto
 input.addEventListener("input", () => {
     input.value = input.value.toUpperCase();
 });
 
-// Validation
 form.addEventListener("submit", (e) => {
-    const value = input.value.trim();
-
-    if (value.length !== 6) {
+    if (input.value.trim().length !== 6) {
         e.preventDefault();
-        errorMsg.style.display = "block";
         errorMsg.innerText = "Le code doit contenir 6 caractères.";
-        input.style.borderColor = "var(--danger)";
-        return;
+        errorMsg.style.display = "block";
     }
-
-    errorMsg.style.display = "none";
-    input.style.borderColor = "var(--border)";
-});
-
-input.addEventListener("focus", () => {
-    input.style.transform = "scale(1.03)";
-});
-
-input.addEventListener("blur", () => {
-    input.style.transform = "scale(1)";
 });
 
 </script>
-{% endblock %}
 
+{% endblock %}
