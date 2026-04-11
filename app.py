@@ -34,6 +34,7 @@ db.init_app(app)
 # Création automatique des tables au démarrage du serveur
 with app.app_context():
     try:
+        db.drop_all()
         db.create_all()
         print("✅ Base de données connectée et tables créées/vérifiées !")
     except Exception as e:
