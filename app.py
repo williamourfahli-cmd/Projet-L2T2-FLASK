@@ -7,34 +7,41 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Session, Participation, UserRole
 
 # ============================================================
-# INITIALISATION DE L'APPLICATION
+# INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
 
 app = Flask(__name__)
 
-# ==========================================
-# 1. CONFIGURATION DYNAMIQUE 
-# ==========================================
-uri = os.environ.get("DATABASE_URL", "sqlite:///database.db")
+# Récupération de l'URL Render (Variable d'environnement)
+uri = os.environ.get("DATABASE_URL")
 
-# Correction du bug de dialecte Postgres (Heroku/Render)
-if uri.startswith("postgres://"):
-    uri = uri.replace("postgres://", "postgresql://", 1)
+if uri:
+    # Correction indispensable du dialecte pour PostgreSQL
+    if uri.startswith("postgres://"):
+        uri = uri.replace("postgres://", "postgresql://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = uri
+else:
+    # Fallback sur SQLite pour tes tests en local sur ton PC
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 
-app.config["SQLALCHEMY_DATABASE_URI"] = uri
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me-in-production")
+# Utilisation d'une variable d'env pour la sécurité (Cybersécurité)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-key-a-changer-en-prod")
 
-# ==========================================
-# 2. INITIALISATION 
-# ==========================================
+# Liaison de SQLAlchemy à l'application
 db.init_app(app)
 
-# ==========================================
-# 3. CRÉATION DES TABLES 
-# ==========================================
+# Création automatique des tables au démarrage du serveur
 with app.app_context():
-    db.create_all()  # Ici, Flask connaît enfin l'URI et db est lié à l'app
+    try:
+        db.create_all()
+        print("✅ Base de données connectée et tables créées/vérifiées !")
+    except Exception as e:
+        print(f"❌ Erreur lors de l'initialisation de la base : {e}")
+
+# ============================================================
+# FONCTIONS UTILITAIRES (Le reste de ton code commence ici)
+# ============================================================
 
 # ============================================================
 # FONCTIONS UTILITAIRES
@@ -386,24 +393,37 @@ def join_session():
     """
     Permet à un étudiant de rejoindre une session.
 
-    - Vérifie le code session
-    - Vérifie doublon
-    - Insère participation
+    Fonctionnement :
+    - Vérifie que l'utilisateur est un étudiant
+    - Vérifie que la session existe et est active
+    - Vérifie qu'il n'est pas déjà inscrit
+    - Crée une participation
+    - Initialise la phase à "avant"
+    - Redirige vers le QCM
     """
 
+    # Vérification du rôle
     if session.get("role") != "student":
         return redirect(url_for("login"))
 
+    # Récupération des données du formulaire
     code = request.form["code_session"].strip().upper()
     anonyme = "anonyme" in request.form
     webcam = "webcam" in request.form
 
+    # Recherche de la session
     session_obj = Session.query.filter_by(code_session=code).first()
 
     if session_obj is None:
         flash("Code session invalide.", "error")
         return redirect(url_for("student_dashboard"))
 
+    # Vérification que la session est active
+    if not session_obj.is_active:
+        flash("Cette session est terminée.", "error")
+        return redirect(url_for("student_dashboard"))
+
+    # Vérification d'inscription existante
     existing = Participation.query.filter_by(
         session_id=session_obj.id,
         student_id=session["user_id"]
@@ -413,6 +433,7 @@ def join_session():
         flash("Vous êtes déjà inscrit à cette session.", "warning")
         return redirect(url_for("student_dashboard"))
 
+    # Création de la participation
     participation = Participation(
         session_id=session_obj.id,
         student_id=session["user_id"],
@@ -423,9 +444,284 @@ def join_session():
     db.session.add(participation)
     db.session.commit()
 
-    flash("Vous avez rejoint la session.", "success")
-    return redirect(url_for("student_dashboard"))
+    # Initialisation de la phase (IMPORTANT)
+    session["phase"] = "avant"
+    session["current_session_id"] = session_obj.id
 
+    return redirect(url_for("qcm"))
+    
+
+# ============================================================
+# Questionnaires (Mesure subjective)
+# ============================================================   
+
+
+@app.route("/qcm")
+def qcm():
+    """
+    Affiche le questionnaire étudiant en fonction de la phase.
+
+    Fonctionnement :
+    - Vérifie authentification et rôle
+    - Vérifie participation à la session
+    - Récupère la session en base
+    - Si session terminée → force phase "apres"
+    - Sinon récupère la phase actuelle (avant / pendant)
+    - Envoie les données au template
+    """
+
+    # Vérification authentification
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    # Vérification rôle
+    if session.get("role") != "student":
+        return redirect(url_for("login"))
+
+    # Récupération session en cours
+    session_id = session.get("current_session_id")
+
+    if not session_id:
+        return redirect(url_for("student_dashboard"))
+
+    # Vérification participation
+    participation = Participation.query.filter_by(
+        session_id=session_id,
+        student_id=session["user_id"]
+    ).first()
+
+    if not participation:
+        return redirect(url_for("student_dashboard"))
+
+    # Récupération session DB
+    session_obj = Session.query.get(session_id)
+
+    if not session_obj:
+        return redirect(url_for("student_dashboard"))
+
+    # Gestion des phases des questionnaires
+    # Si le prof a terminé la session → phase finale
+    if not session_obj.is_active:
+        session["phase"] = "apres"
+
+    # Sinon récupérer la phase actuelle
+    phase = session.get("phase", "avant")
+
+    return render_template(
+        "qcm.html",
+        session_id=session_id,
+        freq=session_obj.frequence_questionnaire,
+        phase=phase
+    )
+
+@app.route("/qcm/submit", methods=["POST"])
+def submit_qcm():
+    """
+    Enregistre une réponse QCM.
+
+    Fonctionnement :
+    - Vérifie authentification
+    - Vérifie validité des données
+    - Vérifie que la session est active
+    - Vérifie participation
+    - Enregistre la réponse
+    - Gère les doublons
+    - Gère la transition de phase (avant → pendant)
+    """
+
+    # Vérification authentification
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # Récupération JSON
+    payload = request.get_json()
+
+    if not payload:
+        return jsonify({"error": "Missing JSON payload"}), 400
+
+    # Extraction des données
+    try:
+        session_id = int(payload.get("session_id"))
+        occurrence = int(payload.get("occurrence", 1))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid session_id or occurrence"}), 400
+
+    phase     = payload.get("phase")
+    emotion   = payload.get("emotion")
+    intensity = payload.get("intensity")
+    slider    = payload.get("slider_value")
+
+    if not phase:
+        return jsonify({"error": "Missing phase"}), 400
+
+    # ================================
+    # Vérification session active
+    # ================================
+
+    session_obj = Session.query.get(session_id)
+
+    if not session_obj:
+        return jsonify({"error": "Session not found"}), 404
+
+    if not session_obj.is_active:
+        return jsonify({"error": "Session terminée"}), 403
+
+    # ================================
+    # Vérification participation
+    # ================================
+
+    participant = Participation.query.filter_by(
+        session_id=session_id,
+        student_id=session["user_id"]
+    ).first()
+
+    if not participant:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # ================================
+    # Création réponse
+    # ================================
+
+    response = QCMResponse(
+        session_id=session_id,
+        user_id=session["user_id"],
+        phase=phase,
+        emotion=emotion,
+        intensity=intensity,
+        slider_value=slider,
+        occurrence=occurrence
+    )
+
+    # ================================
+    # Sauvegarde DB
+    # ================================
+
+    try:
+        db.session.add(response)
+        db.session.commit()
+
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Already submitted"}), 400
+
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Server error"}), 500
+
+    # ================================
+    # TRANSITION DE PHASE
+    # ================================
+
+    # Si c'était le QCM "avant" → passer en "pendant"
+    if session.get("phase") == "avant":
+        session["phase"] = "pendant"
+
+    return jsonify({"ok": True})
+
+
+# ============================================================
+# Fermer une session en cours (coté professeur)
+# ============================================================
+
+
+@app.route("/end_session/<int:session_id>", methods=["POST"])
+def end_session(session_id):
+    """
+    Permet à un professeur de terminer une session.
+
+    Fonctionnement :
+    - Vérifie que l'utilisateur est un professeur
+    - Récupère la session concernée
+    - Passe la session en inactive (is_active = False)
+    - Enregistre la date de fin
+    - Empêche toute nouvelle interaction des étudiants
+
+    Args:
+        session_id (int): identifiant de la session à fermer
+
+    Returns:
+        Redirection vers le dashboard professeur
+    """
+
+    # Vérification du rôle utilisateur
+    if session.get("role") != "professor":
+        return redirect(url_for("login"))
+
+    # Récupération de la session
+    session_obj = Session.query.get(session_id)
+
+    if not session_obj:
+        return redirect(url_for("professor_dashboard"))
+
+    # Mise à jour de l'état de la session
+    session_obj.is_active = False
+    session_obj.date_fin = datetime.utcnow()
+
+    # Sauvegarde en base
+    db.session.commit()
+
+    flash("Session terminée.", "success")
+
+    return redirect(url_for("professor_dashboard"))
+
+
+
+# ============================================================
+# Quitter une session (coté étudiant)
+# ============================================================
+
+
+@app.route("/leave_session", methods=["POST"])
+def leave_session():
+    """
+    Permet à un étudiant de quitter une session.
+
+    Fonctionnement :
+    - Vérifie authentification
+    - Vérifie qu'une session est active
+    - Passe la phase à "apres"
+    - Redirige vers le QCM final
+    """
+
+    # Vérification authentification
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    session_id = session.get("current_session_id")
+
+    if not session_id:
+        return redirect(url_for("student_dashboard"))
+
+    # Passage en phase finale
+    session["phase"] = "apres"
+
+    return redirect(url_for("qcm"))
+
+
+# ============================================================
+# Vérification de l'état de la session
+# ============================================================
+
+@app.route("/check_session_status")
+def check_session_status():
+    """
+    Vérifie si la session est active et si l'utilisateur est dans une session.
+    """
+
+    session_id = session.get("current_session_id")
+
+    if not session_id:
+        return {"status": "no_session"}
+
+    session_obj = Session.query.get(session_id)
+
+    if not session_obj:
+        return {"status": "not_found"}
+
+    if not session_obj.is_active:
+        return {"status": "ended"}
+
+    return {"status": "active"}
 
 # ============================================================
 # LANCEMENT
