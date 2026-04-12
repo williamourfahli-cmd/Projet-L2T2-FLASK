@@ -2,10 +2,9 @@ import os
 import re
 import random
 import string
-from datetime import datetime
-from sqlalchemy.exc import IntegrityError
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.exc import IntegrityError
 from models import db, User, Session, Participation, UserRole, QCMResponse
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
