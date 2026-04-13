@@ -304,3 +304,44 @@ class QCMResponse(db.Model):
         backref='qcm_responses',
         lazy=True
     )
+
+
+ # ============================================================
+# TABLE WEBCAM ANALYSIS
+# ============================================================
+class WebcamAnalysis(db.Model):
+    """
+    Stocke les résultats d'analyse d'émotions via DeepFace.
+    """
+
+    __tablename__ = 'webcam_analysis'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    session_id = db.Column(
+        db.Integer,
+        db.ForeignKey('sessions.id'),
+        nullable=False
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id'),
+        nullable=False
+    )
+
+    # Emotion dominante détectée par DeepFace
+    emotion = db.Column(db.String(50), nullable=False)
+
+    # Score de confiance (0 à 100)
+    confidence = db.Column(db.Float, nullable=True)
+
+    # Toutes les émotions avec leurs scores (JSON)
+    all_emotions = db.Column(db.Text, nullable=True)
+
+    # Date d'analyse
+    analyzed_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )

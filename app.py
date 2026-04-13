@@ -5,7 +5,7 @@ import string
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
-from models import db, User, Session, Participation, UserRole, QCMResponse
+from models import db, User, Session, Participation, UserRole, QCMResponse, WebcamAnalysis
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
@@ -511,8 +511,10 @@ def qcm():
         "qcm.html",
         session_id=session_id,
         freq=session_obj.frequence_questionnaire,
-        phase=phase
-    )
+        freq_webcam=session_obj.frequence_webcam,
+        phase=phase,
+        webcam_active=participation.webcam_active
+)
 
 @app.route("/qcm/submit", methods=["POST"])
 def submit_qcm():
@@ -722,6 +724,72 @@ def check_session_status():
         return {"status": "ended"}
 
     return {"status": "active"}
+
+# ============================================================
+# ANALYSE WEBCAM DEEPFACE
+# ============================================================
+
+@app.route("/analyze_webcam", methods=["POST"])
+def analyze_webcam():
+    """
+    Reçoit une image base64 depuis le frontend,
+    analyse l'émotion avec DeepFace et sauvegarde le résultat.
+    """
+
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    payload = request.get_json()
+    if not payload or "image" not in payload:
+        return jsonify({"error": "Missing image"}), 400
+
+    session_id = payload.get("session_id")
+    image_data = payload.get("image")
+
+    try:
+        import base64
+        import numpy as np
+        import cv2
+        from deepface import DeepFace
+
+        # Décoder l'image base64
+        header, encoded = image_data.split(",", 1)
+        img_bytes = base64.b64decode(encoded)
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
+        # Analyse DeepFace
+        result = DeepFace.analyze(
+            img,
+            actions=["emotion"],
+            enforce_detection=False,
+            detector_backend="opencv"
+        )
+
+        dominant_emotion = result[0]["dominant_emotion"]
+        emotions = result[0]["emotion"]
+        confidence = emotions[dominant_emotion]
+
+        import json
+        analysis = WebcamAnalysis(
+            session_id=session_id,
+            user_id=session["user_id"],
+            emotion=dominant_emotion,
+            confidence=confidence,
+            all_emotions=json.dumps(emotions)
+        )
+
+        db.session.add(analysis)
+        db.session.commit()
+
+        return jsonify({
+            "ok": True,
+            "emotion": dominant_emotion,
+            "confidence": round(confidence, 2)
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ============================================================
 # LANCEMENT
