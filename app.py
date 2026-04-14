@@ -790,6 +790,26 @@ def analyze_webcam():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+@app.route("/deepface")
+def deepface():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    if session.get("role") != "student":
+        return redirect(url_for("login"))
+    
+    session_id = session.get("current_session_id")
+    if not session_id:
+        return redirect(url_for("student_dashboard"))
+
+    session_obj = Session.query.get(session_id)
+
+    return render_template(
+        "deepface.html",
+        session_id=session_id,
+        freq_webcam=session_obj.frequence_webcam
+    )
 
 # ============================================================
 # LANCEMENT

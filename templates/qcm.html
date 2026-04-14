@@ -57,13 +57,6 @@
         </div>
         <!-- BOUTON QUITTER -->
     </div>
-    <!-- WEBCAM -->
-    <div id="webcamContainer" style="display:none; margin-top:20px; text-align:center;">
-    <video id="webcamVideo" autoplay playsinline 
-           style="width:200px; border-radius:8px; opacity:0.7;"></video>
-    <canvas id="webcamCanvas" style="display:none;"></canvas>
-    <p id="webcamStatus" class="muted" style="font-size:12px;">📷 Webcam active</p>
-</div>
 
     <button class="btn danger" onclick="leaveSession()">
             Quitter la session
@@ -336,79 +329,6 @@ function leaveSession() {
             window.location.href = "/qcm";
         });
 }
-/* ============================================================
-   WEBCAM + DEEPFACE
-============================================================ */
-
-const WEBCAM_FREQ = Number("{{ freq_webcam }}") * 1000;
-let webcamStream = null;
-let webcamInterval = null;
-
-async function startWebcam() {
-    try {
-        webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        const video = document.getElementById("webcamVideo");
-        video.srcObject = webcamStream;
-        document.getElementById("webcamContainer").style.display = "block";
-
-        // Lancer la capture à intervalles réguliers
-        webcamInterval = setInterval(captureAndAnalyze, WEBCAM_FREQ);
-
-    } catch (err) {
-        console.warn("Webcam non disponible :", err);
-    }
-}
-
-async function captureAndAnalyze() {
-    const video = document.getElementById("webcamVideo");
-    const canvas = document.getElementById("webcamCanvas");
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-
-    const imageData = canvas.toDataURL("image/jpeg", 0.7);
-
-    try {
-        const res = await fetch("/analyze_webcam", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                session_id: SESSION_ID,
-                image: imageData
-            })
-        });
-
-        const data = await res.json();
-        if (data.ok) {
-            document.getElementById("webcamStatus").innerText = 
-                `📷 Émotion détectée : ${data.emotion} (${data.confidence}%)`;
-        }
-    } catch (e) {
-        console.warn("Erreur analyse webcam :", e);
-    }
-}
-
-function stopWebcam() {
-    if (webcamStream) {
-        webcamStream.getTracks().forEach(t => t.stop());
-    }
-    if (webcamInterval) {
-        clearInterval(webcamInterval);
-    }
-}
-
-// Démarrer la webcam si l'étudiant a activé l'option
-// et a donné son consentement RGPD
-const webcamActive = "{{ webcam_active }}" === "True";
-const consentGiven = "{{ session.consent_given }}" === "True";
-
-if (webcamActive && consentGiven) {
-    startWebcam();
-}
-
-// Arrêter la webcam quand on quitte la page
-window.addEventListener("beforeunload", stopWebcam);
 
 </script>
 
