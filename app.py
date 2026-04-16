@@ -645,44 +645,46 @@ def submit_qcm():
 # ============================================================
 
 
-@app.route("/end_session/<int:session_id>", methods=["POST"])
+@app.route("/end_session/<int:session_id>")
 def end_session(session_id):
     """
-    Permet à un professeur de terminer une session.
-
-    Fonctionnement :
-    - Vérifie que l'utilisateur est un professeur
-    - Récupère la session concernée
-    - Passe la session en inactive (is_active = False)
-    - Enregistre la date de fin
-    - Empêche toute nouvelle interaction des étudiants
-
-    Args:
-        session_id (int): identifiant de la session à fermer
-
-    Returns:
-        Redirection vers le dashboard professeur
+    Clôture une session d'examen et met à jour les états côté serveur et client.
     """
-
-    # Vérification du rôle utilisateur
+    # Vérification de sécurité : seul un utilisateur avec le rôle 'professor' peut fermer une session
     if session.get("role") != "professor":
+        flash("Accès non autorisé.", "danger")
         return redirect(url_for("login"))
 
-    # Récupération de la session
-    session_obj = Session.query.get(session_id)
+    try:
+        # Récupération de l'objet Session via l'ID passé dans l'URL
+        current_sess = Session.query.get(session_id)
+        
+        if current_sess:
+            # Mise à jour du statut en base de données pour stopper les flux de données
+            current_sess.status = "ended"
+            
+            # Enregistrement de l'horodatage de fin (utilise l'import datetime)
+            current_sess.end_time = datetime.now() 
+            
+            # Validation des modifications dans la base de données SQL
+            db.session.commit()
+            
+            # Nettoyage de la variable de session Flask pour éviter les conflits d'ID
+            if session.get("current_session_id") == session_id:
+                session.pop("current_session_id", None)
+            
+            flash(f"La session '{current_sess.name}' a été fermée avec succès.", "success")
+        else:
+            flash("Session introuvable.", "warning")
 
-    if not session_obj:
-        return redirect(url_for("professor_dashboard"))
+    except Exception as e:
+        # En cas d'erreur (ex: perte de connexion DB), on annule les modifications en cours
+        db.session.rollback()
+        # Log de l'erreur dans la console pour le débogage technique
+        print(f"Erreur lors de la fermeture : {str(e)}")
+        flash("Erreur critique lors de la fermeture de la session.", "danger")
 
-    # Mise à jour de l'état de la session
-    session_obj.is_active = False
-    session_obj.date_fin = datetime.utcnow()
-
-    # Sauvegarde en base
-    db.session.commit()
-
-    flash("Session terminée.", "success")
-
+    # Redirection vers le tableau de bord pour rafraîchir la liste des sessions
     return redirect(url_for("professor_dashboard"))
 
 
@@ -703,20 +705,18 @@ def leave_session():
     - Passe la phase à "apres"
     - Redirige vers le QCM final
     """
-
-    # Vérification authentification
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-
+    # 1. On récupère l'ID avant de le supprimer pour d'éventuels logs
     session_id = session.get("current_session_id")
-
-    if not session_id:
-        return redirect(url_for("student_dashboard"))
-
-    # Passage en phase finale
-    session["phase"] = "apres"
-
-    return redirect(url_for("qcm"))
+    
+    # 2. Nettoyage complet des variables de session
+    session.pop("current_session_id", None)
+    session.pop("phase", None) # On nettoie aussi la phase pour la prochaine fois
+    
+    # 3. On renvoie la direction au JS
+    return jsonify({
+        "status": "ok", 
+        "redirect": url_for("student_dashboard")
+    })
 
 
 # ============================================================
@@ -831,6 +831,60 @@ def deepface():
         freq_webcam=session_obj.frequence_webcam,
         webcam_active=participation.webcam_active
 )
+
+@app.route("/analyze_emotion", methods=["POST"])
+def analyze_emotion():
+    """
+    Route appelée par le JavaScript pour analyser une image de la webcam.
+    """
+    # Vérification que l'utilisateur est connecté et dans une session active
+    if "user_id" not in session or "current_session_id" not in session:
+        return jsonify({"error": "Session non active"}), 403
+
+    try:
+        # Récupération de l'image en base64 envoyée par le client
+        data = request.json
+        image_data = data.get("image")
+        if not image_data:
+            return jsonify({"error": "Aucune image reçue"}), 400
+
+        # Décodage de la chaîne base64 en image exploitable par OpenCV
+        header, encoded = image_data.split(",", 1)
+        nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        # Analyse faciale avec DeepFace
+        # enforce_detection=False permet de ne pas planter si le visage est mal cadré
+        results = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False)
+
+        if results:
+            dominant_emotion = results[0]['dominant_emotion']
+            # Conversion du dictionnaire des scores d'émotions en JSON pour le stockage SQL
+            all_emotions_json = json.dumps(results[0]['emotion'])
+
+            # Création de l'enregistrement pour la base de données
+            analysis = WebcamAnalysis(
+                user_id=session["user_id"],
+                session_id=session["current_session_id"],
+                dominant_emotion=dominant_emotion,
+                all_emotions=all_emotions_json,
+                timestamp=datetime.now() # Enregistre le moment précis de l'analyse
+            )
+            
+            db.session.add(analysis)
+            db.session.commit()
+
+            # On renvoie l'émotion dominante au JavaScript pour mise à jour de l'interface
+            return jsonify({
+                "status": "success",
+                "emotion": dominant_emotion
+            })
+
+    except Exception as e:
+        # En cas d'erreur, on annule la transaction pour éviter de bloquer la DB
+        db.session.rollback()
+        print(f"Erreur d'analyse webcam : {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
     
 
 # ============================================================

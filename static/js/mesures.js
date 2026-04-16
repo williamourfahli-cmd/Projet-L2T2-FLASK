@@ -204,10 +204,24 @@ function showNextQCM() {
    QUITTER
 ============================= */
 
-function leaveSession() {
-    fetch("/leave_session", {method:"POST"})
-        .then(() => window.location.href = "/dashboard/student");
+async function leaveSession() {
+    try {
+        const response = await fetch("/leave_session", { 
+            method: "POST" 
+        });
+        const data = await response.json();
+
+        if (data.redirect) {
+            // Le JavaScript effectue la redirection ici
+            window.location.href = data.redirect;
+        }
+    } catch (error) {
+        console.error("Erreur lors de la sortie :", error);
+        // Au pire, on redirige de force
+        window.location.href = "/student_dashboard";
+    }
 }
+
 
 
 /* ============================================================
@@ -344,3 +358,32 @@ document.addEventListener("mouseup", () => {
 if (webcamActive && consentGiven) {
     startWebcam();
 }
+
+// Fonction qui vérifie l'état de la session en temps réel
+async function checkSessionStatus() {
+    try {
+        const response = await fetch("/check_session_status");
+        const data = await response.json();
+
+        // Si le serveur dit que la session est terminée ("ended")
+        if (data.status === "ended") {
+            console.log("La session a été fermée par le professeur.");
+            
+            // 1. On arrête la webcam pour libérer les ressources
+            if (typeof stopWebcam === "function") {
+                stopWebcam();
+            }
+
+            // 2. On affiche un petit message avant de partir (optionnel mais propre)
+            alert("La session est terminée. Vous allez être redirigé vers votre tableau de bord.");
+
+            // 3. Redirection immédiate
+            window.location.href = "/student_dashboard";
+        }
+    } catch (error) {
+        console.error("Erreur lors de la vérification du statut :", error);
+    }
+}
+
+// On lance la vérification toutes les 5 secondes
+setInterval(checkSessionStatus, 5000);
