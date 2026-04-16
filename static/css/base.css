@@ -1,0 +1,487 @@
+/* ============================= */
+/* VARIABLES */
+/* ============================= */
+:root {
+    --bg: #0b1020;
+    --primary: #4f46e5;
+    --secondary: #9333ea;
+    --accent: #ec4899;
+
+    --success: #22c55e;
+    --danger: #ef4444;
+
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+
+    --border: rgba(255,255,255,0.08);
+}
+
+/* ================= GLOBAL ================= */
+
+* {
+    box-sizing: border-box;
+}
+
+/* enlever le style des liens */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+body {
+    margin: 0;
+    font-family: "Inter", Arial, sans-serif;
+    color: var(--text);
+
+    background: linear-gradient(135deg, #0b1020, #1e1b4b, #312e81);
+    background-size: 200% 200%;
+    animation: gradientMove 12s ease infinite;
+}
+
+/* animation gradient */
+@keyframes gradientMove {
+    0% { background-position: 0% }
+    50% { background-position: 100% }
+    100% { background-position: 0% }
+}
+
+/* ================= PAGE D'ACCUEIL (LANDING) ================= */
+
+/* ================= HERO ================= */
+
+.hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    margin-top: 40px;
+}
+
+.hero-text {
+    flex: 1;
+}
+
+.hero-text h1 {
+    font-size: 3rem;
+    line-height: 1.2;
+}
+
+.hero-text p {
+    margin-top: 15px;
+    max-width: 500px;
+}
+
+/* gradient texte */
+.gradient-text {
+    background: linear-gradient(90deg, #4f46e5, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* boutons */
+.hero-buttons {
+    margin-top: 30px;
+    display: flex;
+    gap: 15px;
+}
+
+/* visuel */
+.hero-visual {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+/* ================= DASHBOARD FAKE ================= */
+
+.fake-dashboard {
+    width: 320px;
+    padding: 20px;
+    text-align: center;
+}
+
+/* titre */
+.dashboard-header {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+}
+
+/* graph */
+.fake-graph {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    height: 140px;
+    gap: 10px;
+}
+
+/* barres */
+.bar {
+    width: 18%;
+    height: var(--h);
+
+    background: linear-gradient(180deg, #4f46e5, #ec4899);
+    border-radius: 6px;
+
+    animation: grow 1.2s ease forwards;
+}
+
+/* animation */
+@keyframes grow {
+    from {
+        height: 0;
+    }
+    to {
+        height: var(--h);
+    }
+}
+
+/* décalage animation */
+.bar:nth-child(1) { animation-delay: 0.1s; }
+.bar:nth-child(2) { animation-delay: 0.2s; }
+.bar:nth-child(3) { animation-delay: 0.3s; }
+.bar:nth-child(4) { animation-delay: 0.4s; }
+.bar:nth-child(5) { animation-delay: 0.5s; }
+
+/* emojis en bas */
+.graph-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 1.2rem;
+}
+
+/* effet hover léger */
+.bar:hover {
+    transform: scaleY(1.1);
+}
+
+/* ================= FEATURES ================= */
+
+.features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 60px;
+}
+
+/* ================= HOW ================= */
+
+.how {
+    margin-top: 60px;
+}
+
+.how h2 {
+    margin-bottom: 20px;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 800px) {
+
+    .hero {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .features {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ================= LAYOUT ================= */
+
+.container, .dashboard {
+    width: min(92%, 1000px);
+    margin: 50px auto;
+
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ================= TOPBAR ================= */
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+/* ================= TYPO ================= */
+
+h1, h2, h3 {
+    margin: 0;
+}
+
+p {
+    color: var(--muted);
+}
+
+/* ================= INPUT ================= */
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+
+    border: 1px solid var(--border);
+    background: #0b1220;
+    color: var(--text);
+
+    transition: 0.2s;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* ================= FORM ================= */
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ================= BUTTONS ================= */
+
+.btn {
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+
+    font-weight: bold;
+    cursor: pointer;
+
+    transition: 0.25s ease;
+}
+
+/* couleurs */
+.btn.primary {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+}
+
+.btn.success {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+}
+
+.btn.danger {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: white;
+}
+
+.btn.secondary {
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+}
+
+/* hover */
+.btn:hover {
+    transform: scale(1.05);
+}
+
+/* ================= CARDS ================= */
+
+.card {
+    background: rgba(255,255,255,0.03);
+    border-radius: 14px;
+    padding: 20px;
+
+    border: 1px solid rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+
+    transition: 0.25s ease;
+}
+
+.card:hover {
+    transform: scale(1.02);
+    border-color: rgba(124,58,237,0.4);
+}
+
+/* ================= GRID ================= */
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+@media (max-width: 700px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ================= FLASH ================= */
+
+.flash {
+    padding: 12px;
+    border-radius: 10px;
+}
+
+.flash.success {
+    background: rgba(34,197,94,0.15);
+}
+
+.flash.error {
+    background: rgba(239,68,68,0.15);
+}
+
+.flash.warning {
+    background: rgba(245,158,11,0.15);
+}
+
+/* ================= EMOJIS ================= */
+
+.emoji-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px; /* espace entre emojis */
+    margin-top: 30px;
+    flex-wrap: wrap; /* responsive */
+}
+
+.emoji {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    cursor: pointer;
+
+    padding: 10px;
+    border-radius: 12px;
+
+    transition: 0.2s ease;
+}
+
+.emoji-icon {
+    font-size: 3rem;
+}
+
+/* hover */
+.emoji:hover {
+    transform: scale(1.15);
+    background: rgba(255,255,255,0.05);
+}
+
+/* selected */
+.emoji.selected {
+    transform: scale(1.25);
+
+    background: rgba(124,58,237,0.15);
+    border: 1px solid rgba(124,58,237,0.4);
+
+    backdrop-filter: blur(6px);
+
+    box-shadow: 0 0 20px rgba(124,58,237,0.5);
+}
+
+.emoji.selected span {
+    filter: drop-shadow(0 0 10px rgba(236,72,153,0.8));
+}
+
+/* ================= POPUP ================= */
+
+.custom-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+
+    transform: translate(-50%, -50%) scale(0.9);
+
+    background: rgba(30,41,59,0.9);
+    padding: 20px;
+    border-radius: 14px;
+
+    backdrop-filter: blur(10px);
+
+    animation: popup 0.2s forwards;
+}
+
+@keyframes popup {
+    to {
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* ============================= */
+/* CONSENTEMENT */
+/* ============================= */
+
+.modal-bg {
+    position: fixed;
+    inset: 0;
+
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 999;
+}
+
+.modal {
+    width: min(90%, 650px);
+    max-height: 80vh;
+
+    overflow-y: auto; /* 🔥 IMPORTANT */
+
+    background: rgba(30,41,59,0.95);
+    padding: 25px;
+    border-radius: 16px;
+
+    border: 1px solid var(--border);
+}
+
+/* intro */
+.consent-intro {
+    color: var(--text);
+    margin-bottom: 20px;
+}
+
+/* sections */
+.consent-section {
+    margin-bottom: 18px;
+}
+
+.consent-section h3 {
+    margin-bottom: 6px;
+    color: var(--primary);
+    font-size: 1rem;
+}
+
+.consent-section p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.consent-section ul {
+    padding-left: 18px;
+    margin: 5px 0;
+}
+
+.consent-section li {
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+/* boutons */
+.consent-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.consent-actions .btn {
+    flex: 1;
+}
