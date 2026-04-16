@@ -107,18 +107,17 @@ def home():
     Redirige automatiquement l'utilisateur :
     - vers le dashboard professeur si connecté en tant que professeur
     - vers le dashboard étudiant si connecté en tant qu'étudiant
-    - vers la page de connexion sinon
+    - vers la page landing (page d'accueil) sinon
 
     Returns:
         Redirection Flask
     """
-
     if "user_id" in session:
         if session.get("role") == "professor":
             return redirect(url_for("professor_dashboard"))
         return redirect(url_for("student_dashboard"))
 
-    return redirect(url_for("login"))
+    return render_template("landing.html")
 
 
 # ============================================================
