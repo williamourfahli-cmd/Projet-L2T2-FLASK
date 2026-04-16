@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Mesures{% endblock %}
+
+{% block body %}
+
+<div class="container"
+     data-session-id="{{ session_id }}"
+     data-freq="{{ freq }}"
+     data-phase="{{ phase }}"
+     data-freq-webcam="{{ freq_webcam }}"
+     data-webcam-active="{{ webcam_active }}"
+     data-consent="{{ session.consent_given }}">
+
+    <!-- ============================= -->
+    <!-- CARD PRINCIPALE QCM -->
+    <!-- ============================= -->
+    <div class="card" id="qcmCard">
+
+        <h2 id="qcmTitle"></h2>
+        <p id="qcmSubtitle"></p>
+
+        <!-- EMOJIS -->
+        <div class="emoji-container">
+
+            <div class="emoji" data-value="motivé">
+                <span class="emoji-icon">🙂</span>
+                <p>MOTIVÉ</p>
+            </div>
+
+            <div class="emoji" data-value="neutre">
+                <span class="emoji-icon">😐</span>
+                <p>NEUTRE</p>
+            </div>
+
+            <div class="emoji" data-value="ennuye">
+                <span class="emoji-icon">😴</span>
+                <p>ENNUYÉ</p>
+            </div>
+
+            <div class="emoji" data-value="stresse">
+                <span class="emoji-icon">😰</span>
+                <p>STRESSÉ</p>
+            </div>
+
+            <div class="emoji" data-value="demotive">
+                <span class="emoji-icon">😞</span>
+                <p>DÉMOTIVÉ</p>
+            </div>
+
+        </div>
+
+        <!-- SLIDER -->
+        <div id="sliderStep" style="display:none; text-align:center; margin-top:30px;">
+
+            <p id="sliderLabel"></p>
+
+            <input type="range" min="1" max="5" value="3" id="intensitySlider">
+
+            <p id="sliderValue">3</p>
+
+            <button class="btn primary" onclick="submitQCM()">
+                Valider
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- QUITTER -->
+    <button class="btn danger" onclick="leaveSession()">
+        Quitter la session
+    </button>
+
+    <!-- COUNTDOWN -->
+    <div id="countdownStep" class="card" style="display:none; text-align:center;">
+        <h3>Prochain questionnaire</h3>
+        <p id="countdown">0:00</p>
+    </div>
+
+</div>
+
+<!-- ============================= -->
+<!-- WEBCAM FLOTTANTE -->
+<!-- ============================= -->
+<div id="webcamFloat" style="
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 180px;
+    background: #0b1220;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: grab;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: none;
+">
+    <!-- HEADER DRAG -->
+    <div id="webcamHeader" style="
+        background: rgba(124,58,237,0.3);
+        padding: 6px 10px;
+        font-size: 11px;
+        color: #c4b5fd;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+    ">
+        <span>📷 Webcam</span>
+        <span id="webcamEmotionBadge" style="
+            background: rgba(124,58,237,0.5);
+            padding: 2px 6px;
+            border-radius: 99px;
+            font-size: 10px;
+        ">...</span>
+    </div>
+
+    <!-- VIDEO -->
+    <video id="webcamVideo" autoplay playsinline muted style="
+        width: 100%;
+        display: block;
+    "></video>
+
+    <canvas id="webcamCanvas" style="display:none;"></canvas>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/qcm.js') }}"></script>
+<script src="{{ url_for('static', filename='js/webcam.js') }}"></script>
+{% endblock %}
