@@ -1,42 +1,50 @@
 {% extends "base.html" %}
 
+{% block title %}Questionnaire{% endblock %}
+
 {% block body %}
 
-<div class="container">
+<div class="container"
 
+     data-session-id="{{ session_id }}"
+     data-freq="{{ freq }}"
+     data-phase="{{ phase }}">
+
+    <!-- ============================= -->
+    <!-- CARD PRINCIPALE -->
+    <!-- ============================= -->
     <div class="card" id="qcmCard">
 
-        <!-- TITRE DYNAMIQUE -->
         <h2 id="qcmTitle"></h2>
-
+        <p id="qcmSubtitle"></p>
 
         <!-- ============================= -->
         <!-- EMOJIS -->
         <!-- ============================= -->
-        <div id="emojiStep" class="emoji-container">
+        <div class="emoji-container">
 
             <div class="emoji" data-value="motivé">
-                <span>🙂</span>
+                <span class="emoji-icon">🙂</span>
                 <p>MOTIVÉ</p>
             </div>
 
             <div class="emoji" data-value="neutre">
-                <span>😐</span>
+                <span class="emoji-icon">😐</span>
                 <p>NEUTRE</p>
             </div>
 
             <div class="emoji" data-value="ennuye">
-                <span>😴</span>
+                <span class="emoji-icon">😴</span>
                 <p>ENNUYÉ</p>
             </div>
 
             <div class="emoji" data-value="stresse">
-                <span>😰</span>
+                <span class="emoji-icon">😰</span>
                 <p>STRESSÉ</p>
             </div>
 
             <div class="emoji" data-value="demotive">
-                <span>😞</span>
+                <span class="emoji-icon">😞</span>
                 <p>DÉMOTIVÉ</p>
             </div>
 
@@ -45,291 +53,43 @@
         <!-- ============================= -->
         <!-- SLIDER -->
         <!-- ============================= -->
-        <div id="sliderStep" style="display:none; margin-top:30px;">
+        <div id="sliderStep" style="display:none; text-align:center; margin-top:30px;">
 
-            <p class="slider-label"></p>
+            <p id="sliderLabel"></p>
 
             <input type="range" min="1" max="5" value="3" id="intensitySlider">
 
             <p id="sliderValue">3</p>
 
-            <button class="btn" onclick="submitQCM()">Valider</button>
+            <button class="btn primary" onclick="submitQCM()">
+                Valider
+            </button>
+
         </div>
-        <!-- BOUTON QUITTER -->
+
     </div>
 
+    <!-- ============================= -->
+    <!-- QUITTER -->
+    <!-- ============================= -->
     <button class="btn danger" onclick="leaveSession()">
-            Quitter la session
+        Quitter la session
     </button>
 
     <!-- ============================= -->
     <!-- COUNTDOWN -->
     <!-- ============================= -->
-    <div id="countdownStep" style="display:none; text-align:center; margin-top:30px;">
-        <h3>Prochain questionnaire dans :</h3>
-        <p id="countdown" style="font-size:2rem;">0</p>
+    <div id="countdownStep" class="card" style="display:none; text-align:center;">
+
+        <h3>Prochain questionnaire</h3>
+        <p id="countdown">0:00</p>
+
     </div>
 
 </div>
 
-<script>
+{% endblock %}
 
-/* ============================================================
-   VARIABLES
-============================================================ */
-
-const FREQUENCE = Number("{{ freq }}") * 60;
-const SESSION_ID = Number("{{ session_id }}");
-const CURRENT_PHASE = "{{ phase }}";
-
-let occurrence = 1;
-let selectedEmotion = null;
-
-/*
-    Permet d'éviter plusieurs déclenchements du même événement
-*/
-let sessionHandled = false;
-
-
-/* ============================================================
-   ADAPTATION UI SELON PHASE
-============================================================ */
-
-const title = document.getElementById("qcmTitle");
-const sliderLabel = document.querySelector(".slider-label");
-
-if (CURRENT_PHASE === "avant") {
-    title.innerText = "Avant le cours, vous vous sentez :";
-    sliderLabel.innerText = "À quel point votre état est lié au cours ?";
-}
-else if (CURRENT_PHASE === "pendant") {
-    title.innerText = "Comment vous sentez-vous ?";
-    sliderLabel.innerText = "Intensité";
-}
-else if (CURRENT_PHASE === "apres") {
-    title.innerText = "Après le cours, vous vous sentez :";
-    sliderLabel.innerText = "Impact du cours ?";
-}
-
-
-/* ============================================================
-   EMOJIS
-============================================================ */
-
-document.querySelectorAll(".emoji").forEach(el => {
-
-    el.addEventListener("click", () => {
-
-        document.querySelectorAll(".emoji")
-            .forEach(e => e.classList.remove("selected"));
-
-        el.classList.add("selected");
-
-        selectedEmotion = el.dataset.value;
-
-        document.getElementById("sliderStep").style.display = "block";
-    });
-});
-
-
-/* ============================================================
-   SLIDER
-============================================================ */
-
-const slider = document.getElementById("intensitySlider");
-const display = document.getElementById("sliderValue");
-
-slider.addEventListener("input", () => {
-    display.innerText = slider.value;
-});
-
-
-/* ============================================================
-   SUBMIT
-============================================================ */
-
-async function submitQCM() {
-
-    if (!selectedEmotion) {
-        showAlert("Veuillez choisir une émotion");
-        return;
-    }
-
-    try {
-
-        const response = await fetch("/qcm/submit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                session_id: SESSION_ID,
-                phase: CURRENT_PHASE,
-                emotion: selectedEmotion,
-                intensity: Number(slider.value),
-                slider_value: Number(slider.value),
-                occurrence: occurrence
-            })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-
-            if (result.error === "Session terminée") {
-                showAlert("La session a été terminée par le professeur.");
-                window.location.href = "/dashboard/student";
-                return;
-            }
-
-            if (result.error === "Already submitted") {
-                showAlert("Vous avez déjà répondu.");
-                return;
-            }
-
-            showAlert("Erreur : " + result.error);
-            return;
-        }
-
-        occurrence++;
-
-        /*
-            Phase finale : on termine ici sans relancer le timer
-        */
-        if (CURRENT_PHASE === "apres") {
-            showAlert("Merci pour votre participation !");
-            setTimeout(() => {
-                window.location.href = "/dashboard/student";
-            }, 3000);
-            return;
-        }
-
-        document.getElementById("qcmCard").style.display = "none";
-        document.getElementById("countdownStep").style.display = "block";
-
-        startCountdown();
-
-    } catch (error) {
-        showAlert("Erreur réseau");
-    }
-}
-
-
-/* ============================================================
-   COUNTDOWN
-============================================================ */
-
-function startCountdown() {
-
-    /*
-        Aucun timer en phase finale
-    */
-    if (CURRENT_PHASE === "apres") return;
-
-    let timeLeft = FREQUENCE;
-    const display = document.getElementById("countdown");
-
-    const interval = setInterval(async () => {
-
-        /*
-            Stopper si déjà traité
-        */
-        if (sessionHandled) {
-            clearInterval(interval);
-            return;
-        }
-
-        try {
-            const res = await fetch("/check_session_status");
-            const data = await res.json();
-
-            /*
-                Ignorer si déjà en phase finale
-            */
-            if (data.status === "ended" && CURRENT_PHASE !== "apres") {
-
-                sessionHandled = true;
-                clearInterval(interval);
-
-                showAlert("La session a été terminée par le professeur.");
-
-                setTimeout(() => {
-                    window.location.href = "/dashboard/student";
-                }, 3000);
-
-                return;
-            }
-
-        } catch (e) {}
-
-        let minutes = Math.floor(timeLeft / 60);
-        let seconds = timeLeft % 60;
-
-        display.innerText =
-            `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
-        timeLeft--;
-
-        if (timeLeft < 0) {
-            clearInterval(interval);
-            showNextQCM();
-        }
-
-    }, 1000);
-}
-
-
-/* ============================================================
-   RESET QCM
-============================================================ */
-
-async function showNextQCM() {
-
-    /*
-        Ne rien faire si phase finale
-    */
-    if (CURRENT_PHASE === "apres") return;
-
-    try {
-        const res = await fetch("/check_session_status");
-        const data = await res.json();
-
-        if (data.status === "ended") {
-            showAlert("Session terminée");
-
-            setTimeout(() => {
-                window.location.href = "/dashboard/student";
-            }, 3000);
-
-            return;
-        }
-
-    } catch (e) {}
-
-    document.getElementById("qcmCard").style.display = "block";
-    document.getElementById("countdownStep").style.display = "none";
-
-    selectedEmotion = null;
-
-    document.querySelectorAll(".emoji")
-        .forEach(e => e.classList.remove("selected"));
-
-    slider.value = 3;
-    display.innerText = 3;
-
-    document.getElementById("sliderStep").style.display = "none";
-}
-
-
-/* ============================================================
-   QUITTER SESSION
-============================================================ */
-
-function leaveSession() {
-    fetch("/leave_session", { method: "POST" })
-        .then(() => {
-            window.location.href = "/qcm";
-        });
-}
-
-</script>
-
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/qcm.js') }}"></script>
 {% endblock %}
