@@ -2,15 +2,19 @@
    VARIABLES
 ============================= */
 
-const body = document.querySelector(".container");
+// On utilise un nom plus précis pour éviter les conflits
+const containerEl = document.querySelector(".container");
 
-const SESSION_ID = Number(body.dataset.sessionId);
-const FREQUENCE = Number(body.dataset.freq) * 60;
-const CURRENT_PHASE = body.dataset.phase;
-
-let occurrence = 1;
-let selectedEmotion = null;
-let sessionHandled = false;
+// On vérifie que l'élément existe avant de lire les données
+if (containerEl) {
+    const SESSION_ID = Number(containerEl.dataset.sessionId);
+    const FREQUENCE = Number(containerEl.dataset.freq) * 60;
+    const CURRENT_PHASE = containerEl.dataset.phase;
+    const WEBCAM_FREQ = Number(containerEl.dataset.freqWebcam) * 1000; // Conversion en ms
+    
+    //Déclaration des variables globales 
+    window.sessionId = SESSION_ID; 
+}
 
 /* =============================
    TITRES
@@ -228,21 +232,37 @@ async function leaveSession() {
    WEBCAM FLOTTANTE + DEEPFACE
 ============================================================ */
 
-const body = document.querySelector(".container");
+const containerEl = document.querySelector(".container");
 
-const WC_SESSION_ID  = Number(body.dataset.sessionId);
-const WEBCAM_FREQ    = Number(body.dataset.freqWebcam) * 1000;
-const webcamActive   = body.dataset.webcamActive === "True";
-const consentGiven   = body.dataset.consent === "True";
+// 2. Initialisation des variables avec des valeurs par défaut sécurisées
+let WC_SESSION_ID  = null;
+let WEBCAM_FREQ    = 3000; // 3 secondes par défaut
+let webcamActive   = false;
+let consentGiven   = false;
 
 let webcamStream   = null;
 let webcamInterval = null;
 
+// 3. Extraction sécurisée des données depuis le HTML
+if (containerEl) {
+    WC_SESSION_ID = Number(containerEl.dataset.sessionId);
+    
+    // On multiplie par 1000 pour passer des secondes (prof) aux millisecondes (JS)
+    WEBCAM_FREQ   = Number(containerEl.dataset.freqWebcam) * 1000;
+    
+    // Conversion des chaînes "True"/"False" du template Jinja en vrais booléens JS
+    webcamActive  = containerEl.dataset.webcamActive === "True";
+    consentGiven  = containerEl.dataset.consent === "True";
+} else {
+    console.error("Erreur critique : L'élément .container est introuvable dans le DOM.");
+}
+
+// 4. Dictionnaire des émojis (Note : "happy" devient "motivé" pour coller à ton projet L2T2)
 const emotionEmojis = {
     "happy":    "😊",
-    "sad":      "😢",
-    "angry":    "😠",
-    "fear":     "😨",
+    "sad":      "😞",
+    "angry":    "😰",
+    "fear":     "😰",
     "surprise": "😲",
     "disgust":  "🤢",
     "neutral":  "😐"
@@ -387,3 +407,5 @@ async function checkSessionStatus() {
 
 // On lance la vérification toutes les 5 secondes
 setInterval(checkSessionStatus, 5000);
+
+

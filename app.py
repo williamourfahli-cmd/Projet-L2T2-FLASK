@@ -751,52 +751,64 @@ def check_session_status():
 @app.route("/analyze_webcam", methods=["POST"])
 def analyze_webcam():
     """
-    Reçoit une image base64 depuis le frontend,
-    analyse l'émotion avec DeepFace et sauvegarde le résultat.
+    Reçoit une image base64, analyse l'émotion avec DeepFace et sauvegarde en base de données.
     """
 
+    # Vérification de la session utilisateur
     if "user_id" not in session:
-        return jsonify({"error": "Unauthorized"}), 403
+        return jsonify({"error": "Utilisateur non connecté"}), 403
 
+    # Récupération des données envoyées par le JavaScript
     payload = request.get_json()
     if not payload or "image" not in payload:
-        return jsonify({"error": "Missing image"}), 400
+        return jsonify({"error": "Image manquante"}), 400
 
-    session_id = payload.get("session_id")
     image_data = payload.get("image")
 
     try:
-
-        # Décoder l'image base64
+        # --- PHASE 1 : DÉCODAGE DE L'IMAGE ---
+        # On sépare l'en-tête de l'image (data:image/jpeg;base64,...) du contenu réel
         header, encoded = image_data.split(",", 1)
         img_bytes = base64.b64decode(encoded)
+        # Conversion des bytes en tableau NumPy pour OpenCV
         img_array = np.frombuffer(img_bytes, dtype=np.uint8)
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-        # Analyse DeepFace
-        result = DeepFace.analyze(
+        # --- PHASE 2 : ANALYSE D'ÉMOTION ---
+        # enforce_detection=False évite de faire planter le code si l'élève bouge
+        results = DeepFace.analyze(
             img,
             actions=["emotion"],
             enforce_detection=False,
             detector_backend="opencv"
         )
 
-        dominant_emotion = result[0]["dominant_emotion"]
-        emotions = result[0]["emotion"]
-        confidence = emotions[dominant_emotion]
+        # Extraction des résultats du premier visage détecté
+        dominant_emotion = results[0]["dominant_emotion"]
+        emotions_dict = results[0]["emotion"]
+        confidence = emotions_dict[dominant_emotion]
 
-        import json
+        # Conversion du dictionnaire complet en texte JSON pour la base de données
+        all_emotions_json = json.dumps(emotions_dict)
+
+        # --- PHASE 3 : ENREGISTREMENT ---
+        # On utilise les colonnes exactes définies dans models.py
         analysis = WebcamAnalysis(
-            session_id=session_id,
-            user_id=session["user_id"],
-            emotion=dominant_emotion,
-            confidence=confidence,
-            all_emotions=json.dumps(emotions)
+            session_id=session.get("current_session_id"),  # ID de la session de cours
+            user_id=session["user_id"],                   # ID de l'étudiant
+            emotion=dominant_emotion,                     # Note: Ta colonne s'appelle 'emotion' dans models.py
+            confidence=confidence,                        # Score de probabilité
+            all_emotions=all_emotions_json                # Détails pour les graphiques
+            # Le timestamp est géré automatiquement s'il y a un 'default' dans le modèle
         )
+        
+        # Ajout explicite de l'horodatage si nécessaire
+        analysis.timestamp = datetime.now()
 
         db.session.add(analysis)
         db.session.commit()
 
+        # Réponse au frontend pour mise à jour de l'interface (emoji/badge)
         return jsonify({
             "ok": True,
             "emotion": dominant_emotion,
@@ -804,7 +816,10 @@ def analyze_webcam():
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # En cas d'erreur, on annule toute modification en base de données
+        db.session.rollback()
+        print(f"Erreur d'analyse : {str(e)}")
+        return jsonify({"error": "Erreur lors de l'analyse faciale"}), 500
     
 
 @app.route("/deepface")

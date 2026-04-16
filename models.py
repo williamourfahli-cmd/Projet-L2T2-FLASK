@@ -331,7 +331,7 @@ class WebcamAnalysis(db.Model):
     )
 
     # Emotion dominante détectée par DeepFace
-    emotion = db.Column(db.String(50), nullable=False)
+    dominant_emotion = db.Column(db.String(50), nullable=False)
 
     # Score de confiance (0 à 100)
     confidence = db.Column(db.Float, nullable=True)
