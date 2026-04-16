@@ -851,56 +851,78 @@ def deepface():
 def analyze_emotion():
     """
     Route appelée par le JavaScript pour analyser une image de la webcam.
+    Analyse l'émotion dominante, extrait le score de confiance et sauvegarde en base de données.
     """
-    # Vérification que l'utilisateur est connecté et dans une session active
+    # 1. Vérification de la session utilisateur
     if "user_id" not in session or "current_session_id" not in session:
         return jsonify({"error": "Session non active"}), 403
 
     try:
-        # Récupération de l'image en base64 envoyée par le client
+        # 2. Récupération et validation des données d'entrée
         data = request.json
         image_data = data.get("image")
         if not image_data:
             return jsonify({"error": "Aucune image reçue"}), 400
 
-        # Décodage de la chaîne base64 en image exploitable par OpenCV
+        # 3. Décodage de l'image Base64 pour OpenCV
+        # On sépare le header (data:image/jpeg;base64,...) du contenu encodé
         header, encoded = image_data.split(",", 1)
         nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-        # Analyse faciale avec DeepFace
-        # enforce_detection=False permet de ne pas planter si le visage est mal cadré
-        results = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False)
+        # 4. Analyse faciale avec DeepFace
+        # detector_backend='opencv' est le plus rapide pour du temps réel
+        results = DeepFace.analyze(
+            frame, 
+            actions=['emotion'], 
+            enforce_detection=False,
+            detector_backend='opencv'
+        )
 
         if results:
+            # Récupération de l'émotion dominante (ex: "happy")
             dominant_emotion = results[0]['dominant_emotion']
-            # Conversion du dictionnaire des scores d'émotions en JSON pour le stockage SQL
-            all_emotions_json = json.dumps(results[0]['emotion'])
+            
+            # Extraction du dictionnaire complet (ex: {"happy": 98.2, "sad": 0.1, ...})
+            emotions_dict = results[0]['emotion']
+            
+            # --- FIX CONFIDENCE : On récupère le score de l'émotion dominante ---
+            confidence = emotions_dict[dominant_emotion]
+            
+            # Conversion du dictionnaire en chaîne JSON pour le champ 'all_emotions' (Text/JSON)
+            all_emotions_json = json.dumps(emotions_dict)
 
-            # Création de l'enregistrement pour la base de données
+            # 5. Création de l'enregistrement SQLAlchemy
+            # Assure-toi que les noms de colonnes correspondent à ton fichier models.py
             analysis = WebcamAnalysis(
                 user_id=session["user_id"],
                 session_id=session["current_session_id"],
                 dominant_emotion=dominant_emotion,
+                confidence=confidence, # Ajout de la valeur de confiance
                 all_emotions=all_emotions_json,
-                timestamp=datetime.now() # Enregistre le moment précis de l'analyse
+                timestamp=datetime.now()
             )
             
+            # 6. Sauvegarde en base de données
             db.session.add(analysis)
             db.session.commit()
 
-            # On renvoie l'émotion dominante au JavaScript pour mise à jour de l'interface
+            # 7. Réponse au JavaScript
+            # On utilise "status": "success" pour correspondre à ton mesures.js
             return jsonify({
                 "status": "success",
-                "emotion": dominant_emotion
+                "emotion": dominant_emotion,
+                "confidence": round(confidence, 2)
             })
 
     except Exception as e:
-        # En cas d'erreur, on annule la transaction pour éviter de bloquer la DB
+        # En cas d'erreur (IA ou DB), on annule la transaction en cours
         db.session.rollback()
         print(f"Erreur d'analyse webcam : {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-    
+        return jsonify({
+            "status": "error", 
+            "message": "Erreur lors de l'analyse ou de l'enregistrement"
+        }), 500
 
 # ============================================================
 # LANCEMENT
