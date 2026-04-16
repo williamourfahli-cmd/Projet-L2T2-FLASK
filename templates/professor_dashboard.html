@@ -7,11 +7,9 @@
 
     <!-- HEADER -->
     <div class="topbar">
-        <div>
-            <h1>Bienvenue {{ session.first_name }} {{ session.last_name }}</h1>
-        </div>
+        <h1>Bienvenue {{ session.first_name }} {{ session.last_name }}</h1>
 
-        <a class="btn secondary logout-btn" href="{{ url_for('logout') }}">
+        <a class="btn danger" href="{{ url_for('logout') }}">
             Déconnexion
         </a>
     </div>
@@ -20,7 +18,7 @@
 
         <!-- COMPTE -->
         <div class="card">
-            <h2>Compte</h2>
+            <h2>👤 Compte</h2>
 
             <p><strong>Nom :</strong> {{ session.last_name }}</p>
             <p><strong>Prénom :</strong> {{ session.first_name }}</p>
@@ -29,15 +27,15 @@
 
         <!-- CREATION SESSION -->
         <div class="card">
-            <h2>Créer une session</h2>
+            <h2>🚀 Nouvelle session</h2>
 
-            <form id="createSessionForm" method="POST" action="/create_session">
+            <form method="POST" action="/create_session">
 
-                <label>Fréquence questionnaire (minutes)</label>
-                <input type="number" id="freqQ" name="freq_questionnaire" min="1" required>
+                <label>Fréquence questionnaire (min)</label>
+                <input type="number" name="freq_questionnaire" min="1" required>
 
                 <label>Fréquence webcam</label>
-                <input type="number" id="freqW" name="freq_webcam" min="1" required>
+                <input type="number" name="freq_webcam" min="1" required>
 
                 <label>Mode affichage</label>
                 <select name="mode_affichage">
@@ -46,59 +44,41 @@
                     <option value="alertes">Alertes</option>
                 </select>
 
-                <div id="errorMsgProf" class="error-msg"></div>
-
-                <button class="btn">Créer</button>
+                <button class="btn success">Créer la session</button>
             </form>
         </div>
 
     </div>
 
     <!-- SESSIONS -->
-    <div class="card" style="margin-top:20px;">
-        <h2>Mes sessions</h2>
+    <div class="card">
+        <h2>📚 Mes sessions</h2>
 
         {% for s in sessions %}
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
 
-            <div style="margin-bottom:15px;">
                 <strong>{{ s.code_session }}</strong>
 
-                <!--
-                    Bouton fin de session
-                    Visible uniquement si la session est active
-                -->
                 {% if s.is_active %}
-                    <form action="{{ url_for('end_session', session_id=s.id) }}" method="POST" style="margin-top:5px;">
-                        <button class="btn" style="background: var(--danger);">
-                            Fin de session
+                    <form action="{{ url_for('end_session', session_id=s.id) }}" method="POST">
+                        <button class="btn danger">
+                            Terminer
                         </button>
                     </form>
                 {% else %}
-                    <p class="muted">Session terminée</p>
+                    <span style="color: var(--muted);">Terminée</span>
                 {% endif %}
-            </div>
 
+            </div>
         {% else %}
-            <p class="muted">Aucune session créée</p>
+            <p>Aucune session</p>
         {% endfor %}
     </div>
 
 </div>
 
-<script>
-// Validation formulaire
-const form = document.getElementById("createSessionForm");
-const freqQ = document.getElementById("freqQ");
-const freqW = document.getElementById("freqW");
-const errorMsg = document.getElementById("errorMsgProf");
+{% endblock %}
 
-form.addEventListener("submit", (e) => {
-    if (freqQ.value <= 0 || freqW.value <= 0) {
-        e.preventDefault();
-        errorMsg.innerText = "Valeurs invalides.";
-        errorMsg.style.display = "block";
-    }
-});
-</script>
-
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/professor.js') }}"></script>
 {% endblock %}
