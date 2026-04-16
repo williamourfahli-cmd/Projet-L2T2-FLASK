@@ -507,6 +507,18 @@ def qcm():
     # Sinon récupérer la phase actuelle
     phase = session.get("phase", "avant")
 
+    # 🔥 Si déjà répondu au "avant", on passe en "pendant"
+    if phase == "avant":
+        already_answered = QCMResponse.query.filter_by(
+            session_id=session_id,
+            user_id=session["user_id"],
+            phase="avant"
+        ).first()
+
+    if already_answered:
+        phase = "pendant"
+        session["phase"] = "pendant"
+
     return render_template(
         "qcm.html",
         session_id=session_id,
