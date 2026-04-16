@@ -7,20 +7,19 @@
 
     <!-- HEADER -->
     <div class="topbar">
-        <div>
-            <h1>Bienvenue {{ session.first_name }} {{ session.last_name }}</h1>
-        </div>
+        <h1>Bienvenue {{ session.first_name }} {{ session.last_name }}</h1>
 
-        <a class="btn secondary logout-btn" href="{{ url_for('logout') }}">
+        <a class="btn danger" href="{{ url_for('logout') }}">
             Déconnexion
         </a>
     </div>
 
+    <!-- GRID PRINCIPAL -->
     <div class="grid">
 
         <!-- COMPTE -->
         <div class="card">
-            <h2>Compte</h2>
+            <h2>👤 Mon compte</h2>
 
             <p><strong>Nom :</strong> {{ session.last_name }}</p>
             <p><strong>Prénom :</strong> {{ session.first_name }}</p>
@@ -29,7 +28,7 @@
 
         <!-- REJOINDRE SESSION -->
         <div class="card">
-            <h2>Rejoindre une session</h2>
+            <h2>🎯 Rejoindre une session</h2>
 
             <form id="joinForm" method="POST" action="/join_session">
 
@@ -43,71 +42,72 @@
                     required
                 >
 
-                <div class="checkbox-group">
-                    <label class="checkbox-item">
+                <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
+                    <label style="display:flex; align-items:center; gap:10px;">
                         <input type="checkbox" name="anonyme">
-                        <span>Rester anonyme</span>
+                        Mode anonyme
                     </label>
 
-                    <label class="checkbox-item">
+                    <label style="display:flex; align-items:center; gap:10px;">
                         <input type="checkbox" name="webcam">
-                        <span>Activer la webcam</span>
+                        Activer la webcam
                     </label>
                 </div>
 
-                <div id="errorMsg" class="error-msg"></div>
+                <div id="errorMsg" style="color: var(--danger); display:none;"></div>
 
-                <button class="btn">Rejoindre</button>
+                <button class="btn success">Rejoindre la session</button>
             </form>
         </div>
 
     </div>
 
     <!-- SESSIONS -->
-    <div class="card" style="margin-top:20px;">
-        <h2>Mes sessions</h2>
+    <div class="card">
+        <h2>📚 Mes sessions</h2>
 
         {% for p in participations %}
 
-            <div style="margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; margin-top:10px;">
+
+            <div>
                 <strong>{{ p.session.code_session }}</strong>
-                <!--
-                    Indicateur si session terminée
-                -->
+
                 {% if not p.session.is_active %}
-                    <p class="muted">Session terminée</p>
+                    <p style="font-size:0.85rem; color: var(--muted);">
+                        Session terminée
+                    </p>
+                {% endif %}
+            </div>
+
+            <div style="display:flex; gap:8px;">
+
+                {% if p.anonyme %}
+                    <span style="background: rgba(147,51,234,0.2); padding:4px 8px;">
+                        Anonyme
+                    </span>
+                {% endif %}
+
+                {% if p.webcam_active %}
+                    <span style="background: rgba(34,197,94,0.2); padding:4px 8px;">
+                        Webcam
+                    </span>
                 {% endif %}
 
             </div>
 
+        </div>
+
         {% else %}
-            <p class="muted">Aucune session rejointe</p>
+            <p>Aucune session</p>
         {% endfor %}
+
     </div>
 
 </div>
 
-<script>
+{% endblock %}
 
-/*
-    Validation code session
-*/
-const form = document.getElementById("joinForm");
-const input = document.getElementById("codeInput");
-const errorMsg = document.getElementById("errorMsg");
-
-input.addEventListener("input", () => {
-    input.value = input.value.toUpperCase();
-});
-
-form.addEventListener("submit", (e) => {
-    if (input.value.trim().length !== 6) {
-        e.preventDefault();
-        errorMsg.innerText = "Le code doit contenir 6 caractères.";
-        errorMsg.style.display = "block";
-    }
-});
-
-</script>
-
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/student.js') }}"></script>
 {% endblock %}
