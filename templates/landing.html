@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}EmoTrack{% endblock %}
+
+{% block body %}
+
+<div class="container landing">
+
+    <!-- ================= HERO ================= -->
+    <section class="hero">
+
+        <div class="hero-text">
+            <h1>
+                Analysez l'engagement des étudiants<br>
+                <span class="gradient-text">en temps réel</span>
+            </h1>
+
+            <p>
+                EmoTrack est une application pédagogique permettant de suivre
+                l’attention et les émotions des étudiants grâce à des questionnaires
+                et une analyse intelligente.
+            </p>
+
+            <div class="hero-buttons">
+                <a href="{{ url_for('login') }}" class="btn primary">
+                    Se connecter
+                </a>
+
+                <a href="{{ url_for('register') }}" class="btn success">
+                    S'inscrire
+                </a>
+            </div>
+        </div>
+
+        <div class="hero-visual">
+
+            <div class="card fake-dashboard">
+
+                <div class="fake-graph">
+
+                    <div class="bar" style="--h:65%"></div>
+                    <div class="bar" style="--h:40%"></div>
+                    <div class="bar" style="--h:85%"></div>
+                    <div class="bar" style="--h:55%"></div>
+                    <div class="bar" style="--h:75%"></div>
+
+                </div>
+
+                <div class="graph-labels">
+                    <span>🙂</span>
+                    <span>😐</span>
+                    <span>😴</span>
+                    <span>😰</span>
+                    <span>😞</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ================= FEATURES ================= -->
+    <section class="features">
+
+        <div class="card">
+            <h3>📊 Suivi en temps réel</h3>
+            <p>Visualisez instantanément l'engagement des étudiants.</p>
+        </div>
+
+        <div class="card">
+            <h3>😊 Analyse émotionnelle</h3>
+            <p>Détection via questionnaires et webcam intelligente.</p>
+        </div>
+
+        <div class="card">
+            <h3>🎯 Interaction pédagogique</h3>
+            <p>Adaptez vos cours selon les réactions des étudiants.</p>
+        </div>
+
+    </section>
+
+    <!-- ================= HOW ================= -->
+    <section class="how">
+
+        <h2>Comment ça fonctionne ?</h2>
+
+        <div class="grid">
+
+            <div class="card">
+                <h3>1️⃣ Le professeur crée une session</h3>
+            </div>
+
+            <div class="card">
+                <h3>2️⃣ Les étudiants rejoignent</h3>
+            </div>
+
+            <div class="card">
+                <h3>3️⃣ L'analyse en temps réel commence</h3>
+            </div>
+
+        </div>
+
+    </section>
+
+</div>
+
+{% endblock %}
