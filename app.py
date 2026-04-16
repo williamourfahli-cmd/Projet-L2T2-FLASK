@@ -525,7 +525,7 @@ def qcm():
         session["phase"] = "pendant"
 
     return render_template(
-        "qcm.html",
+        "mesures.html",
         session_id=session_id,
         freq=session_obj.frequence_questionnaire,
         freq_webcam=session_obj.frequence_webcam,
