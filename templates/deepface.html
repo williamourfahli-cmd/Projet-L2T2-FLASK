@@ -185,7 +185,14 @@ window.addEventListener("beforeunload", stopWebcam);
    LANCEMENT AUTO
 ============================================================ */
 
-startWebcam();
+const webcamActive = "{{ webcam_active }}" === "True";
+const consentGiven = "{{ session.consent_given }}" === "True";
+
+if (webcamActive && consentGiven) {
+    startWebcam();
+} else {
+    document.getElementById("webcamStatus").innerText = "❌ Webcam désactivée ou consentement non donné.";
+}
 
 </script>
 

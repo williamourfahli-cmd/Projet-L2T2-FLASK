@@ -6,6 +6,12 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
 from models import db, User, Session, Participation, UserRole, QCMResponse, WebcamAnalysis
+import base64
+import numpy as np
+import cv2
+import json
+from deepface import DeepFace
+from datetime import datetime
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
@@ -758,10 +764,6 @@ def analyze_webcam():
     image_data = payload.get("image")
 
     try:
-        import base64
-        import numpy as np
-        import cv2
-        from deepface import DeepFace
 
         # Décoder l'image base64
         header, encoded = image_data.split(",", 1)
@@ -816,11 +818,18 @@ def deepface():
 
     session_obj = Session.query.get(session_id)
 
+    participation = Participation.query.filter_by(
+        session_id=session_id,
+        student_id=session["user_id"]
+    ).first()
+
     return render_template(
         "deepface.html",
         session_id=session_id,
-        freq_webcam=session_obj.frequence_webcam
-    )
+        freq_webcam=session_obj.frequence_webcam,
+        webcam_active=participation.webcam_active
+)
+    
 
 # ============================================================
 # LANCEMENT
