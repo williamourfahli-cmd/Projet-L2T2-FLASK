@@ -755,7 +755,7 @@ def submit_qcm():
 # ============================================================
 
 
-@app.route("/end_session/<int:session_id>")
+@app.route("/end_session/<int:session_id>", methods=["POST"])
 def end_session(session_id):
     """
     Clôture une session d'examen et met à jour les états côté serveur et client.
@@ -774,11 +774,9 @@ def end_session(session_id):
             current_sess.is_active = False
             
             # Enregistrement de l'horodatage de fin (utilise l'import datetime)
-<<<<<<< Updated upstream
-            current_sess.date_fin = datetime.now() 
-=======
+
             current_sess.date_fin= datetime.now() 
->>>>>>> Stashed changes
+
             
             # Validation des modifications dans la base de données SQL
             db.session.commit()
@@ -787,7 +785,7 @@ def end_session(session_id):
             if session.get("current_session_id") == session_id:
                 session.pop("current_session_id", None)
             
-            flash(f"La session '{current_sess.name}' a été fermée avec succès.", "success")
+            flash(f"La session '{current_sess.code_session}' a été fermée avec succès.", "success")
         else:
             flash("Session introuvable.", "warning")
 
