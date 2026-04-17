@@ -1,7 +1,6 @@
 flask
 flask-sqlalchemy
 psycopg2-binary
-deepface
 tf-keras
 opencv-python-headless
 gunicorn
