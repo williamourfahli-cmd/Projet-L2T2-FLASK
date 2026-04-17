@@ -1,8 +1,9 @@
 flask
 flask-sqlalchemy
 psycopg2-binary
-deepface
-tf-keras
-opencv-python-headless
+#deepface
+#tf-keras
+#opencv-python-headless
+#tensorflow-cpu
 gunicorn
 flask-mail
