@@ -38,6 +38,8 @@ else:
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Utilisation d'une variable d'env pour la sécurité (Cybersécurité)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-key-a-changer-en-prod")
+app.config["SESSION_COOKIE_SAMESITE"] = 'Lax'
+app.config["PERMANENT_SESSION_LIFETIME"] = 7200
 
 # ============================================================
 # CONFIGURATION FLASK-MAIL
@@ -316,6 +318,9 @@ def login():
 
         # Initialisation session complète
         session.clear()
+
+        session.permanent = True
+
         session["user_id"] = user.id
         session["role"] = user.role.value
         session["consent_given"] = user.consent_given
@@ -472,6 +477,8 @@ def create_session():
 
     db.session.add(new_session)
     db.session.commit()
+
+    session.modified = True
 
     flash(f"Session créée ! Code : {code}", "success")
 
