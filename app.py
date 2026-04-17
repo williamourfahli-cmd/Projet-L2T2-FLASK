@@ -548,6 +548,8 @@ def join_session():
     session["phase"] = "avant"
     session["current_session_id"] = session_obj.id
 
+    session.modified = True
+
     return redirect(url_for("qcm"))
     
 
@@ -787,29 +789,21 @@ def end_session(session_id):
 # ============================================================
 
 
-@app.route("/leave_session", methods=["POST"])
+@app.route("/leave_session") 
 def leave_session():
     """
-    Permet à un étudiant de quitter une session.
-
-    Fonctionnement :
-    - Vérifie authentification
-    - Vérifie qu'une session est active
-    - Passe la phase à "apres"
-    - Redirige vers le QCM final
+    Permet à un étudiant de quitter une session proprement.
     """
-    # 1. On récupère l'ID avant de le supprimer pour d'éventuels logs
-    session_id = session.get("current_session_id")
-    
-    # 2. Nettoyage complet des variables de session
+    # 1. Nettoyage des variables de session
     session.pop("current_session_id", None)
-    session.pop("phase", None) # On nettoie aussi la phase pour la prochaine fois
+    session.pop("phase", None)
     
-    # 3. On renvoie la direction au JS
-    return jsonify({
-        "status": "ok", 
-        "redirect": url_for("student_dashboard")
-    })
+    # 2. On force la sauvegarde de la session (pour éviter l'anomalie de reconnexion)
+    session.modified = True
+    
+    # 3. Redirection directe vers le dashboard
+    flash("Vous avez quitté la session.", "info")
+    return redirect(url_for("student_dashboard"))
 
 
 # ============================================================

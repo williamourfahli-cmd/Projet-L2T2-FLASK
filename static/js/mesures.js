@@ -261,6 +261,27 @@
         });
     }
 
+    /**
+     * Affiche à nouveau le QCM après le décompte
+     */
+    function showNextQCM() {
+        // 1. On cache le timer
+        document.getElementById("countdownStep").style.display = "none";
+        
+        // 2. On réinitialise l'interface du QCM
+        selectedEmotion = null;
+        document.querySelectorAll(".emoji").forEach(e => e.classList.remove("selected"));
+        document.getElementById("sliderStep").style.display = "none";
+        
+        // 3. On change le texte pour passer en mode "Pendant"
+        CURRENT_PHASE = "pendant"; 
+        const title = document.getElementById("qcmTitle");
+        if (title) title.innerText = "Pendant le cours";
+
+        // 4. On réaffiche le QCM
+        document.getElementById("qcmCard").style.display = "block";
+    }
+
     /* ============================================================
        LANCEMENT DES SERVICES AU CHARGEMENT
        ============================================================ */
