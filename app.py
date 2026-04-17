@@ -780,10 +780,10 @@ def end_session(session_id):
         
         if current_sess:
             # Mise à jour du statut en base de données pour stopper les flux de données
-            current_sess.status = "ended"
+            current_sess.is_active = false
             
             # Enregistrement de l'horodatage de fin (utilise l'import datetime)
-            current_sess.end_time = datetime.now() 
+            current_sess.date_fin = datetime.now() 
             
             # Validation des modifications dans la base de données SQL
             db.session.commit()
