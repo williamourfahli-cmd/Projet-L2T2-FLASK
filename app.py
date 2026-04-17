@@ -229,32 +229,11 @@ def register():
                 subject="Confirmez votre inscription sur EmoTrack",
                 recipients=[email]
             )
-            msg.html = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;
-                        background: #0b1020; color: #e2e8f0; padding: 40px; border-radius: 14px;">
- 
-                <h1 style="color: #4f46e5;">Bienvenue sur EmoTrack, {first_name} !</h1>
- 
-                <p style="color: #94a3b8; font-size: 1rem; margin-top: 16px;">
-                    Tu es à une étape de finaliser ton inscription.
-                    Clique sur le bouton ci-dessous pour confirmer ton adresse email.
-                </p>
- 
-                <div style="text-align: center; margin: 40px 0;">
-                    <a href="{confirm_url}"
-                       style="background: linear-gradient(135deg, #4f46e5, #9333ea);
-                              color: white; padding: 14px 32px; border-radius: 10px;
-                              text-decoration: none; font-weight: bold; font-size: 1rem;">
-                        ✅ Confirmer mon inscription
-                    </a>
-                </div>
- 
-                <p style="color: #94a3b8; font-size: 0.85rem;">
-                    Si tu n'es pas à l'origine de cette inscription, ignore cet email.
-                    Ce lien est valable une seule fois.
-                </p>
-            </div>
-            """
+            msg.html = render_template(
+                "email_confirmation.html",
+                first_name=first_name,
+                confirm_url=confirm_url
+            )    
             mail.send(msg)
             flash("Inscription réussie ! Vérifie ta boîte mail pour confirmer ton adresse.", "success")
         except Exception as e:
