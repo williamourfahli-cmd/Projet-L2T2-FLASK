@@ -780,7 +780,7 @@ def end_session(session_id):
         
         if current_sess:
             # Mise à jour du statut en base de données pour stopper les flux de données
-            current_sess.is_active = false
+            current_sess.is_active = False
             
             # Enregistrement de l'horodatage de fin (utilise l'import datetime)
             current_sess.date_fin = datetime.now() 
