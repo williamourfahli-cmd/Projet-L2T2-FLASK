@@ -4,9 +4,12 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # Force le mode CPU uniquement
 import re
 import random
 import string
+import secrets
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 from models import db, User, Session, Participation, UserRole, QCMResponse, WebcamAnalysis
 import base64
 import numpy as np
@@ -36,6 +39,21 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Utilisation d'une variable d'env pour la sécurité (Cybersécurité)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-key-a-changer-en-prod")
 
+# ============================================================
+# CONFIGURATION FLASK-MAIL
+# ============================================================
+# Ces variables doivent être définies dans les variables d'environnement Render :
+# MAIL_USERNAME : votre adresse Gmail (ex: emotrack.noreply@gmail.com)
+# MAIL_PASSWORD : mot de passe d'application Gmail (pas votre vrai mdp)
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 587
+app.config["MAIL_USE_TLS"] = True
+app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_USERNAME")
+ 
+mail = Mail(app)
+
 # Liaison de SQLAlchemy à l'application
 db.init_app(app)
 
@@ -44,12 +62,20 @@ with app.app_context():
     try:
         db.create_all()
         print("✅ Base de données connectée et tables créées/vérifiées !")
+        # Migration manuelle : ajout des colonnes email_verified et verification_token
+        # IF NOT EXISTS évite toute erreur si les colonnes existent déjà
+        with db.engine.connect() as conn:
+            conn.execute(text(
+                'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE'
+            ))
+            conn.execute(text(
+                'ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(100)'
+            ))
+            conn.commit()
+        print("✅ Colonnes email_verified et verification_token vérifiées !")
+ 
     except Exception as e:
         print(f"❌ Erreur lors de l'initialisation de la base : {e}")
-
-# ============================================================
-# FONCTIONS UTILITAIRES (Le reste de ton code commence ici)
-# ============================================================
 
 # ============================================================
 # FONCTIONS UTILITAIRES
@@ -182,22 +208,98 @@ def register():
             return redirect(url_for("login"))
 
         # Création utilisateur
+        token = secrets.token_urlsafe(32)
         user = User(
             first_name=first_name,
             last_name=last_name,
             email=email,
             password_hash=generate_password_hash(password),
             role=role
+            email_verified=False,
+            verification_token=token
         )
 
         db.session.add(user)
         db.session.commit()
 
-        flash("Inscription réussie.", "success")
+         # Envoi de l'email de confirmation
+        confirm_url = url_for("confirm_email", token=token, _external=True)
+        try:
+            msg = Message(
+                subject="Confirmez votre inscription sur EmoTrack",
+                recipients=[email]
+            )
+            msg.html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;
+                        background: #0b1020; color: #e2e8f0; padding: 40px; border-radius: 14px;">
+ 
+                <h1 style="color: #4f46e5;">Bienvenue sur EmoTrack, {first_name} !</h1>
+ 
+                <p style="color: #94a3b8; font-size: 1rem; margin-top: 16px;">
+                    Tu es à une étape de finaliser ton inscription.
+                    Clique sur le bouton ci-dessous pour confirmer ton adresse email.
+                </p>
+ 
+                <div style="text-align: center; margin: 40px 0;">
+                    <a href="{confirm_url}"
+                       style="background: linear-gradient(135deg, #4f46e5, #9333ea);
+                              color: white; padding: 14px 32px; border-radius: 10px;
+                              text-decoration: none; font-weight: bold; font-size: 1rem;">
+                        ✅ Confirmer mon inscription
+                    </a>
+                </div>
+ 
+                <p style="color: #94a3b8; font-size: 0.85rem;">
+                    Si tu n'es pas à l'origine de cette inscription, ignore cet email.
+                    Ce lien est valable une seule fois.
+                </p>
+            </div>
+            """
+            mail.send(msg)
+            flash("Inscription réussie ! Vérifie ta boîte mail pour confirmer ton adresse.", "success")
+        except Exception as e:
+            print(f"❌ Erreur envoi email : {e}")
+            flash("Compte créé mais l'email de confirmation n'a pas pu être envoyé. Contacte un administrateur.", "warning")
+
         return redirect(url_for("login"))
 
     return render_template("register.html")
 
+# ============================================================
+# CONFIRMATION D'EMAIL
+# ============================================================
+ 
+@app.route("/confirm/<token>")
+def confirm_email(token):
+    """
+    Valide l'adresse email de l'utilisateur via le token reçu par mail.
+ 
+    - Cherche l'utilisateur correspondant au token
+    - Passe email_verified à True
+    - Supprime le token (usage unique)
+    - Redirige vers la connexion
+ 
+    Returns:
+        Redirection Flask
+    """
+    user = User.query.filter_by(verification_token=token).first()
+ 
+    if user is None:
+        flash("Lien de confirmation invalide ou déjà utilisé.", "error")
+        return redirect(url_for("login"))
+ 
+    if user.email_verified:
+        flash("Ton adresse email est déjà confirmée. Tu peux te connecter.", "success")
+        return redirect(url_for("login"))
+ 
+    # Activation du compte
+    user.email_verified = True
+    user.verification_token = None  # Token à usage unique : on le supprime
+    db.session.commit()
+ 
+    flash("✅ Adresse email confirmée ! Tu peux maintenant te connecter.", "success")
+    return redirect(url_for("login"))
+ 
 
 # ============================================================
 # CONNEXION
@@ -227,6 +329,11 @@ def login():
         if user is None or not check_password_hash(user.password_hash, password):
             flash("Email ou mot de passe incorrect.", "error")
             return render_template("login.html")
+
+        # Vérification que l'email a été confirmé
+        if not user.email_verified:
+            flash("Tu dois confirmer ton adresse email avant de te connecter. Vérifie ta boîte mail.", "warning")
+            return render_template("login.html")    
 
         # Initialisation session complète
         session.clear()
