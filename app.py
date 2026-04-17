@@ -63,21 +63,21 @@ db.init_app(app)
 with app.app_context():
     try:
         db.create_all()
-        print("✅ Base de données connectée et tables créées/vérifiées !")
-        # Migration manuelle : ajout des colonnes email_verified et verification_token
-        # IF NOT EXISTS évite toute erreur si les colonnes existent déjà
-        #with db.engine.connect() as conn:
-            #conn.execute(text(
-                #'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE'
-            #))
-            #conn.execute(text(
-               # 'ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(100)'
-            #))
-           # conn.commit()
-        #print("✅ Colonnes email_verified et verification_token vérifiées !")
+        print("Base de données connectée et tables créées/vérifiées !")
+        inspector = db.inspect(db.engine)
+        existing_columns = [col["name"] for col in inspector.get_columns("users")]
+ 
+        with db.engine.connect() as conn:
+            if "email_verified" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE"))
+                print(" Colonne email_verified ajoutée.")
+            if "verification_token" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN verification_token VARCHAR(100)"))
+                print("Colonne verification_token ajoutée.")
+            conn.commit()
  
     except Exception as e:
-        print(f"❌ Erreur lors de l'initialisation de la base : {e}")
+        print(f" Erreur lors de l'initialisation de la base : {e}")
 
 # ============================================================
 # FONCTIONS UTILITAIRES
