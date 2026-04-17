@@ -53,7 +53,13 @@ class User(db.Model):
     role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.STUDENT)
 
     # Consentement RGPD (important pour la webcam)
-    consent_given = db.Column(db.Boolean, default=False, nullable=False)
+    consent_given = db.Column(db.Boolean, default=False, nullable=False) 
+
+    # Vérification d'email : False jusqu'à ce que l'utilisateur clique sur le lien
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+ 
+    # Token unique envoyé par email pour confirmer l'inscription
+    verification_token = db.Column(db.String(100), nullable=True)
 
     # Date de création du compte (en UTC)
     created_at = db.Column(
