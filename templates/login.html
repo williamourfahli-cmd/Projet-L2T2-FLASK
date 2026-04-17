@@ -49,4 +49,31 @@
         Pas encore de compte ? <a href="{{ url_for('register') }}">Créer un compte</a>
     </div>
 </div>
+
+<script>
+function selectRole(role) {
+    const btnStudent = document.getElementById('btn-student');
+    const btnProfessor = document.getElementById('btn-professor');
+    const hint = document.getElementById('role-hint');
+    const emailInput = document.getElementById('email');
+ 
+    // Reset styles
+    btnStudent.style.borderColor = 'rgba(255,255,255,0.08)';
+    btnStudent.style.background = 'rgba(255,255,255,0.03)';
+    btnProfessor.style.borderColor = 'rgba(255,255,255,0.08)';
+    btnProfessor.style.background = 'rgba(255,255,255,0.03)';
+ 
+    if (role === 'student') {
+        btnStudent.style.borderColor = '#4f46e5';
+        btnStudent.style.background = 'rgba(79,70,229,0.15)';
+        hint.textContent = "Utilise ton adresse @etu.u-paris.fr";
+        emailInput.placeholder = "prenom.nom@etu.u-paris.fr";
+    } else {
+        btnProfessor.style.borderColor = '#9333ea';
+        btnProfessor.style.background = 'rgba(147,51,234,0.15)';
+        hint.textContent = "Utilise ton adresse @u-paris.fr";
+        emailInput.placeholder = "prenom.nom@u-paris.fr";
+    }
+}
+</script>
 {% endblock %}
