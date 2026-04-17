@@ -66,15 +66,15 @@ with app.app_context():
         print("✅ Base de données connectée et tables créées/vérifiées !")
         # Migration manuelle : ajout des colonnes email_verified et verification_token
         # IF NOT EXISTS évite toute erreur si les colonnes existent déjà
-        with db.engine.connect() as conn:
-            conn.execute(text(
-                'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE'
-            ))
-            conn.execute(text(
-                'ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(100)'
-            ))
-            conn.commit()
-        print("✅ Colonnes email_verified et verification_token vérifiées !")
+        #with db.engine.connect() as conn:
+            #conn.execute(text(
+                #'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE'
+            #))
+            #conn.execute(text(
+               # 'ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(100)'
+            #))
+           # conn.commit()
+        #print("✅ Colonnes email_verified et verification_token vérifiées !")
  
     except Exception as e:
         print(f"❌ Erreur lors de l'initialisation de la base : {e}")
@@ -617,9 +617,9 @@ def qcm():
             phase="avant"
         ).first()
 
-    if already_answered:
-        phase = "pendant"
-        session["phase"] = "pendant"
+        if already_answered:
+            phase = "pendant"
+            session["phase"] = "pendant"
 
     return render_template(
         "mesures.html",
