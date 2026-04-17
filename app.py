@@ -15,7 +15,7 @@ import base64
 import numpy as np
 #import cv2
 import json
-#from deepface import DeepFace
+from deepface import DeepFace
 from datetime import datetime
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
@@ -83,19 +83,19 @@ with app.app_context():
 # FONCTIONS UTILITAIRES
 # ============================================================
 
-#def analyze_face(image_data):
-   # """
-    #Simule l'analyse DeepFace pour alléger le serveur Render.
-    #"""
-    # On définit une émotion fixe pour les tests
-    #dominant_emotion = "neutral"
-    #emotions_dict = {
-     #   "angry": 0.0, "disgust": 0.0, "fear": 0.0, 
-      #  "happy": 0.0, "sad": 0.0, "surprise": 0.0, "neutral": 100.0
-    #}
-    #confidence = 100.0
+def analyze_face(image_data):
+    """
+    Simule l'analyse DeepFace pour alléger le serveur Render.
+    """
+    #On définit une émotion fixe pour les tests
+    dominant_emotion = "neutral"
+    emotions_dict = {
+        "angry": 0.0, "disgust": 0.0, "fear": 0.0, 
+       "happy": 0.0, "sad": 0.0, "surprise": 0.0, "neutral": 100.0
+    }
+    confidence = 100.0
 
-    #return dominant_emotion, confidence, emotions_dict
+    return dominant_emotion, confidence, emotions_dict
     
 
 def validate_email(email: str):
@@ -852,7 +852,7 @@ def check_session_status():
 # ANALYSE WEBCAM DEEPFACE
 # ============================================================
 
-"""@app.route("/analyze_webcam", methods=["POST"])
+@app.route("/analyze_webcam", methods=["POST"])
 def analyze_webcam():
 
     if "user_id" not in session:
@@ -918,7 +918,7 @@ def deepface():
         session_id=session_id,
         freq_webcam=session_obj.frequence_webcam,
         webcam_active=participation.webcam_active
-)"""
+)
 
 
 # ============================================================
