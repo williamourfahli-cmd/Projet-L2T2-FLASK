@@ -83,6 +83,42 @@ with app.app_context():
 # FONCTIONS UTILITAIRES
 # ============================================================
 
+def analyze_face(image_data, user_id, session_id):
+    """
+    Fonction centralisée DeepFace : analyse + sauvegarde DB
+    """
+
+    header, encoded = image_data.split(",", 1)
+    img_bytes = base64.b64decode(encoded)
+    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
+    results = DeepFace.analyze(
+        img,
+        actions=["emotion"],
+        enforce_detection=False,
+        detector_backend="opencv"
+    )
+
+    dominant_emotion = results[0]["dominant_emotion"]
+    emotions_dict = results[0]["emotion"]
+    confidence = emotions_dict[dominant_emotion]
+
+    analysis = WebcamAnalysis(
+        session_id=session_id,
+        user_id=user_id,
+        emotion=dominant_emotion,
+        confidence=confidence,
+        all_emotions=json.dumps(emotions_dict),
+        timestamp=datetime.now()
+    )
+
+    db.session.add(analysis)
+    db.session.commit()
+
+    return dominant_emotion, confidence
+    
+
 def validate_email(email: str):
     """
     Valide une adresse email universitaire et détermine le rôle associé.
@@ -837,76 +873,38 @@ def check_session_status():
 
 @app.route("/analyze_webcam", methods=["POST"])
 def analyze_webcam():
-    """
-    Reçoit une image base64, analyse l'émotion avec DeepFace et sauvegarde en base de données.
-    """
 
-    # Vérification de la session utilisateur
+    # Vérification connexion
     if "user_id" not in session:
-        return jsonify({"error": "Utilisateur non connecté"}), 403
+        return jsonify({"error": "Unauthorized"}), 403
 
-    # Récupération des données envoyées par le JavaScript
+    # Récupération JSON
     payload = request.get_json()
-    if not payload or "image" not in payload:
-        return jsonify({"error": "Image manquante"}), 400
 
-    image_data = payload.get("image")
+    if not payload or "image" not in payload:
+        return jsonify({"error": "Missing image"}), 400
 
     try:
-        # --- PHASE 1 : DÉCODAGE DE L'IMAGE ---
-        # On sépare l'en-tête de l'image (data:image/jpeg;base64,...) du contenu réel
-        header, encoded = image_data.split(",", 1)
-        img_bytes = base64.b64decode(encoded)
-        # Conversion des bytes en tableau NumPy pour OpenCV
-        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-
-        # --- PHASE 2 : ANALYSE D'ÉMOTION ---
-        # enforce_detection=False évite de faire planter le code si l'élève bouge
-        results = DeepFace.analyze(
-            img,
-            actions=["emotion"],
-            enforce_detection=False,
-            detector_backend="opencv"
+        emotion, confidence = analyze_face(
+            payload["image"],
+            session["user_id"],
+            session.get("current_session_id")
         )
 
-        # Extraction des résultats du premier visage détecté
-        dominant_emotion = results[0]["dominant_emotion"]
-        emotions_dict = results[0]["emotion"]
-        confidence = emotions_dict[dominant_emotion]
-
-        # Conversion du dictionnaire complet en texte JSON pour la base de données
-        all_emotions_json = json.dumps(emotions_dict)
-
-        # --- PHASE 3 : ENREGISTREMENT ---
-        # On utilise les colonnes exactes définies dans models.py
-        analysis = WebcamAnalysis(
-            session_id=session.get("current_session_id"),  # ID de la session de cours
-            user_id=session["user_id"],                   # ID de l'étudiant
-            emotion=dominant_emotion,                     # Note: Ta colonne s'appelle 'emotion' dans models.py
-            confidence=confidence,                        # Score de probabilité
-            all_emotions=all_emotions_json                # Détails pour les graphiques
-            # Le timestamp est géré automatiquement s'il y a un 'default' dans le modèle
-        )
-        
-        # Ajout explicite de l'horodatage si nécessaire
-        analysis.timestamp = datetime.now()
-
-        db.session.add(analysis)
-        db.session.commit()
-
-        # Réponse au frontend pour mise à jour de l'interface (emoji/badge)
         return jsonify({
-            "ok": True,
-            "emotion": dominant_emotion,
+            "status": "success",
+            "emotion": emotion,
             "confidence": round(confidence, 2)
         })
 
     except Exception as e:
-        # En cas d'erreur, on annule toute modification en base de données
         db.session.rollback()
-        print(f"Erreur d'analyse : {str(e)}")
-        return jsonify({"error": "Erreur lors de l'analyse faciale"}), 500
+        print(f"DeepFace error: {e}")
+
+        return jsonify({
+            "status": "error",
+            "message": "Analysis failed"
+        }), 500
     
 
 @app.route("/deepface")
@@ -934,82 +932,6 @@ def deepface():
         webcam_active=participation.webcam_active
 )
 
-@app.route("/analyze_emotion", methods=["POST"])
-def analyze_emotion():
-    """
-    Route appelée par le JavaScript pour analyser une image de la webcam.
-    Analyse l'émotion dominante, extrait le score de confiance et sauvegarde en base de données.
-    """
-    # 1. Vérification de la session utilisateur
-    if "user_id" not in session or "current_session_id" not in session:
-        return jsonify({"error": "Session non active"}), 403
-
-    try:
-        # 2. Récupération et validation des données d'entrée
-        data = request.json
-        image_data = data.get("image")
-        if not image_data:
-            return jsonify({"error": "Aucune image reçue"}), 400
-
-        # 3. Décodage de l'image Base64 pour OpenCV
-        # On sépare le header (data:image/jpeg;base64,...) du contenu encodé
-        header, encoded = image_data.split(",", 1)
-        nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
-        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        # 4. Analyse faciale avec DeepFace
-        # detector_backend='opencv' est le plus rapide pour du temps réel
-        results = DeepFace.analyze(
-            frame, 
-            actions=['emotion'], 
-            enforce_detection=False,
-            detector_backend='opencv'
-        )
-
-        if results:
-            # Récupération de l'émotion dominante (ex: "happy")
-            dominant_emotion = results[0]['dominant_emotion']
-            
-            # Extraction du dictionnaire complet (ex: {"happy": 98.2, "sad": 0.1, ...})
-            emotions_dict = results[0]['emotion']
-            
-            # --- FIX CONFIDENCE : On récupère le score de l'émotion dominante ---
-            confidence = emotions_dict[dominant_emotion]
-            
-            # Conversion du dictionnaire en chaîne JSON pour le champ 'all_emotions' (Text/JSON)
-            all_emotions_json = json.dumps(emotions_dict)
-
-            # 5. Création de l'enregistrement SQLAlchemy
-            # Assure-toi que les noms de colonnes correspondent à ton fichier models.py
-            analysis = WebcamAnalysis(
-                user_id=session["user_id"],
-                session_id=session["current_session_id"],
-                dominant_emotion=dominant_emotion,
-                confidence=confidence, # Ajout de la valeur de confiance
-                all_emotions=all_emotions_json,
-                timestamp=datetime.now()
-            )
-            
-            # 6. Sauvegarde en base de données
-            db.session.add(analysis)
-            db.session.commit()
-
-            # 7. Réponse au JavaScript
-            # On utilise "status": "success" pour correspondre à ton mesures.js
-            return jsonify({
-                "status": "success",
-                "emotion": dominant_emotion,
-                "confidence": round(confidence, 2)
-            })
-
-    except Exception as e:
-        # En cas d'erreur (IA ou DB), on annule la transaction en cours
-        db.session.rollback()
-        print(f"Erreur d'analyse webcam : {str(e)}")
-        return jsonify({
-            "status": "error", 
-            "message": "Erreur lors de l'analyse ou de l'enregistrement"
-        }), 500
 
 # ============================================================
 # LANCEMENT
