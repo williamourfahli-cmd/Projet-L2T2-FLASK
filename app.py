@@ -263,7 +263,7 @@ def register():
             mail.send(msg)
             flash("Inscription réussie ! Vérifie ta boîte mail pour confirmer ton adresse.", "success")
         except Exception as e:
-            print(f"❌ Erreur envoi email : {e}")
+            print(f" Erreur envoi email : {e}")
             flash("Compte créé mais l'email de confirmation n'a pas pu être envoyé. Contacte un administrateur.", "warning")
 
         return redirect(url_for("login"))
@@ -302,7 +302,7 @@ def confirm_email(token):
     user.verification_token = None  # Token à usage unique : on le supprime
     db.session.commit()
  
-    flash("✅ Adresse email confirmée ! Tu peux maintenant te connecter.", "success")
+    flash(" Adresse email confirmée ! Tu peux maintenant te connecter.", "success")
     return redirect(url_for("login"))
  
 
