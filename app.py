@@ -214,7 +214,7 @@ def register():
             last_name=last_name,
             email=email,
             password_hash=generate_password_hash(password),
-            role=role
+            role=role,
             email_verified=False,
             verification_token=token
         )
