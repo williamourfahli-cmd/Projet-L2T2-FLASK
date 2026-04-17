@@ -6,3 +6,4 @@ tf-keras
 opencv-python-headless
 gunicorn
 tensorflow-cpu
+flask-mail

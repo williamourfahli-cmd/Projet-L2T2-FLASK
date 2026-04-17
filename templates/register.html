@@ -13,6 +13,16 @@
       {% endif %}
     {% endwith %}
 
+    <!-- Message affiché APRÈS inscription réussie -->
+    {% if email_sent %}
+    <div class="flash success" style="display:flex; align-items:center; gap:12px; font-size:1rem;">
+        <span style="font-size:1.5rem;">📬</span>
+        <div>
+            <strong>Un email de confirmation a été envoyé à {{ email_sent }}.</strong><br>
+            <span style="font-size:0.9rem;">Ouvre-le et clique sur "Confirmer mon inscription" pour activer ton compte.</span>
+        </div>
+    </div>
+    {% else %}
     <form method="post">
         <label for="first_name">Prénom</label>
         <input id="first_name" name="first_name" type="text" placeholder="Prénom" required>

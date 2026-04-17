@@ -13,6 +13,28 @@
       {% endif %}
     {% endwith %}
 
+    <!-- Sélection du rôle (visuel uniquement, le rôle est déterminé par l'email) -->
+    <div style="margin-bottom: 8px;">
+        <p style="margin-bottom: 10px; font-size: 0.9rem;">Je suis :</p>
+        <div style="display: flex; gap: 12px;">
+            <button type="button" id="btn-student"
+                onclick="selectRole('student')"
+                style="flex:1; padding: 14px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.08);
+                       background: rgba(255,255,255,0.03); color: var(--text); cursor: pointer;
+                       font-size: 1rem; font-weight: bold; transition: 0.2s;">
+                Étudiant
+            </button>
+            <button type="button" id="btn-professor"
+                onclick="selectRole('professor')"
+                style="flex:1; padding: 14px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.08);
+                       background: rgba(255,255,255,0.03); color: var(--text); cursor: pointer;
+                       font-size: 1rem; font-weight: bold; transition: 0.2s;">
+                Professeur
+            </button>
+        </div>
+        <p id="role-hint" style="font-size: 0.8rem; color: var(--muted); margin-top: 8px; min-height: 18px;"></p>
+    </div>
+
     <form method="post">
         <label for="email">Adresse email</label>
         <input id="email" name="email" type="email" placeholder="prenom.nom@etu.u-paris.fr ou prenom.nom@u-paris.fr" required>
@@ -27,4 +49,31 @@
         Pas encore de compte ? <a href="{{ url_for('register') }}">Créer un compte</a>
     </div>
 </div>
+
+<script>
+function selectRole(role) {
+    const btnStudent = document.getElementById('btn-student');
+    const btnProfessor = document.getElementById('btn-professor');
+    const hint = document.getElementById('role-hint');
+    const emailInput = document.getElementById('email');
+ 
+    // Reset styles
+    btnStudent.style.borderColor = 'rgba(255,255,255,0.08)';
+    btnStudent.style.background = 'rgba(255,255,255,0.03)';
+    btnProfessor.style.borderColor = 'rgba(255,255,255,0.08)';
+    btnProfessor.style.background = 'rgba(255,255,255,0.03)';
+ 
+    if (role === 'student') {
+        btnStudent.style.borderColor = '#4f46e5';
+        btnStudent.style.background = 'rgba(79,70,229,0.15)';
+        hint.textContent = "Utilise ton adresse @etu.u-paris.fr";
+        emailInput.placeholder = "prenom.nom@etu.u-paris.fr";
+    } else {
+        btnProfessor.style.borderColor = '#9333ea';
+        btnProfessor.style.background = 'rgba(147,51,234,0.15)';
+        hint.textContent = "Utilise ton adresse @u-paris.fr";
+        emailInput.placeholder = "prenom.nom@u-paris.fr";
+    }
+}
+</script>
 {% endblock %}
