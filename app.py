@@ -1,6 +1,6 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Cache les warnings TF
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # Force le mode CPU uniquement
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Cache les warnings TF
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # Force le mode CPU uniquement
 import re
 import random
 import string
@@ -13,9 +13,9 @@ from sqlalchemy import text
 from models import db, User, Session, Participation, UserRole, QCMResponse, WebcamAnalysis
 import base64
 import numpy as np
-import cv2
+#import cv2
 import json
-from deepface import DeepFace
+#from deepface import DeepFace
 from datetime import datetime
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
@@ -85,24 +85,15 @@ with app.app_context():
 
 def analyze_face(image_data):
     """
-    Analyse DeepFace uniquement (sans DB)
+    Simule l'analyse DeepFace pour alléger le serveur Render.
     """
-
-    header, encoded = image_data.split(",", 1)
-    img_bytes = base64.b64decode(encoded)
-    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-
-    results = DeepFace.analyze(
-        img,
-        actions=["emotion"],
-        enforce_detection=False,
-        detector_backend="opencv"
-    )
-
-    dominant_emotion = results[0]["dominant_emotion"]
-    emotions_dict = results[0]["emotion"]
-    confidence = emotions_dict[dominant_emotion]
+    # On définit une émotion fixe pour les tests
+    dominant_emotion = "neutral"
+    emotions_dict = {
+        "angry": 0.0, "disgust": 0.0, "fear": 0.0, 
+        "happy": 0.0, "sad": 0.0, "surprise": 0.0, "neutral": 100.0
+    }
+    confidence = 100.0
 
     return dominant_emotion, confidence, emotions_dict
     
@@ -783,7 +774,11 @@ def end_session(session_id):
             current_sess.is_active = False
             
             # Enregistrement de l'horodatage de fin (utilise l'import datetime)
+<<<<<<< Updated upstream
             current_sess.date_fin = datetime.now() 
+=======
+            current_sess.date_fin= datetime.now() 
+>>>>>>> Stashed changes
             
             # Validation des modifications dans la base de données SQL
             db.session.commit()
