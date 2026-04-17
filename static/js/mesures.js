@@ -188,6 +188,29 @@
         if (webcamInterval) clearInterval(webcamInterval);
     };
 
+    /*============================================================
+        5. BIP SONORE 
+    ==============================================================*/
+    /* Joue un double bib via Web Audio API - Aucun fichier audio n'est requis */
+    function playBip() {
+        const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+        const gain = ctx.createGain();
+        gain.connect(ctx.destination);
+        gain.gain.value = 0.35;
+
+        [0, 0.18].forEach(offset => {
+            const osc = ctx.createOscillator();
+            osc.type      = "sine";
+            osc.frequency.value = 520;
+            osc.connect(gain);
+            osc.start(ctx.currentTime + offset);
+            osc.stop (ctx.currentTime + offset + 0.12);
+        });
+
+        setTimeout(() => ctx.close(), 600);
+    }
+  
+
     /* ============================================================
        5. LOGIQUE DE TEMPS & STATUT DE LA SESSION
        ============================================================ */
@@ -206,6 +229,7 @@
             
             if (timeLeft <= 0) {
                 clearInterval(interval);
+                playBip(); // Appelle la fonction playBip() pour qu'un bip se déclenche lorsque le qcm suivant s'affiche
                 showNextQCM(); // Affiche le nouveau QCM quand le temps est écoulé
             }
             timeLeft--;
