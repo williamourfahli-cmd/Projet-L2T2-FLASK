@@ -83,9 +83,9 @@ with app.app_context():
 # FONCTIONS UTILITAIRES
 # ============================================================
 
-def analyze_face(image_data, user_id, session_id):
+def analyze_face(image_data):
     """
-    Fonction centralisée DeepFace : analyse + sauvegarde DB
+    Analyse DeepFace uniquement (sans DB)
     """
 
     header, encoded = image_data.split(",", 1)
@@ -104,19 +104,7 @@ def analyze_face(image_data, user_id, session_id):
     emotions_dict = results[0]["emotion"]
     confidence = emotions_dict[dominant_emotion]
 
-    analysis = WebcamAnalysis(
-        session_id=session_id,
-        user_id=user_id,
-        emotion=dominant_emotion,
-        confidence=confidence,
-        all_emotions=json.dumps(emotions_dict),
-        timestamp=datetime.now()
-    )
-
-    db.session.add(analysis)
-    db.session.commit()
-
-    return dominant_emotion, confidence
+    return dominant_emotion, confidence, emotions_dict
     
 
 def validate_email(email: str):
@@ -874,22 +862,29 @@ def check_session_status():
 @app.route("/analyze_webcam", methods=["POST"])
 def analyze_webcam():
 
-    # Vérification connexion
     if "user_id" not in session:
         return jsonify({"error": "Unauthorized"}), 403
 
-    # Récupération JSON
     payload = request.get_json()
 
     if not payload or "image" not in payload:
         return jsonify({"error": "Missing image"}), 400
 
     try:
-        emotion, confidence = analyze_face(
-            payload["image"],
-            session["user_id"],
-            session.get("current_session_id")
+        emotion, confidence, emotions_dict = analyze_face(payload["image"])
+
+        # SAVE DB ICI (séparation)
+        analysis = WebcamAnalysis(
+            session_id=session.get("current_session_id"),
+            user_id=session["user_id"],
+            emotion=emotion,
+            confidence=confidence,
+            all_emotions=json.dumps(emotions_dict),
+            timestamp=datetime.now()
         )
+
+        db.session.add(analysis)
+        db.session.commit()
 
         return jsonify({
             "status": "success",
