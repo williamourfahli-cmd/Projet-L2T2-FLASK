@@ -257,7 +257,7 @@ def register():
             print(f" Erreur envoi email : {e}")
             flash("Compte créé mais l'email de confirmation n'a pas pu être envoyé. Contacte un administrateur.", "warning")
 
-        return redirect(url_for("login"))
+            return render_template("register.html")
 
     return render_template("register.html")
 
