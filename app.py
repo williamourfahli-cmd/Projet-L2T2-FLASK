@@ -78,16 +78,6 @@ with app.app_context():
  
     except Exception as e:
         print(f" Erreur lors de l'initialisation de la base : {e}")
-
-# ============================================================
-# FILTRE JINJA : affichage heure française (UTC+2)
-# ============================================================
-@app.template_filter('heure_fr')
-def heure_fr(dt):
-    if dt is None:
-        return "En cours"
-    dt_fr = dt + timedelta(hours=2)
-    return dt_fr.strftime("%d/%m/%Y à %Hh%M")
  
 # Liaison de SQLAlchemy à l'application
 db.init_app(app)
