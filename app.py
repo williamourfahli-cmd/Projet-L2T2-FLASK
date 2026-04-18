@@ -15,7 +15,6 @@ import base64
 import numpy as np
 #import cv2
 import json
-from deepface import DeepFace
 from datetime import datetime
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
@@ -82,20 +81,6 @@ with app.app_context():
 # ============================================================
 # FONCTIONS UTILITAIRES
 # ============================================================
-
-def analyze_face(image_data):
-    """
-    Simule l'analyse DeepFace pour alléger le serveur Render.
-    """
-    #On définit une émotion fixe pour les tests
-    dominant_emotion = "neutral"
-    emotions_dict = {
-        "angry": 0.0, "disgust": 0.0, "fear": 0.0, 
-       "happy": 0.0, "sad": 0.0, "surprise": 0.0, "neutral": 100.0
-    }
-    confidence = 100.0
-
-    return dominant_emotion, confidence, emotions_dict
     
 
 def validate_email(email: str):
@@ -815,17 +800,26 @@ def end_session(session_id):
 def leave_session():
     """
     Permet à un étudiant de quitter une session proprement.
+
+    Fonctionnement :
+    - Ne supprime PAS immédiatement la session
+    - Force la phase "apres"
+    - Redirige vers le QCM final
     """
-    # 1. Nettoyage des variables de session
-    session.pop("current_session_id", None)
-    session.pop("phase", None)
-    
-    # 2. On force la sauvegarde de la session (pour éviter l'anomalie de reconnexion)
+
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    # Si pas de session → retour dashboard
+    if not session.get("current_session_id"):
+        return redirect(url_for("student_dashboard"))
+
+    # On force la phase finale
+    session["phase"] = "apres"
     session.modified = True
-    
-    # 3. Redirection directe vers le dashboard
-    flash("Vous avez quitté la session.", "info")
-    return redirect(url_for("student_dashboard"))
+
+    # On renvoie vers le QCM final
+    return redirect(url_for("qcm"))
 
 
 # ============================================================
@@ -856,48 +850,6 @@ def check_session_status():
 # ============================================================
 # ANALYSE WEBCAM DEEPFACE
 # ============================================================
-
-@app.route("/analyze_webcam", methods=["POST"])
-def analyze_webcam():
-
-    if "user_id" not in session:
-        return jsonify({"error": "Unauthorized"}), 403
-
-    payload = request.get_json()
-
-    if not payload or "image" not in payload:
-        return jsonify({"error": "Missing image"}), 400
-
-    try:
-        emotion, confidence, emotions_dict = analyze_face(payload["image"])
-
-        # SAVE DB ICI (séparation)
-        analysis = WebcamAnalysis(
-            session_id=session.get("current_session_id"),
-            user_id=session["user_id"],
-            dominant_emotion=emotion,
-            confidence=confidence,
-            all_emotions=json.dumps(emotions_dict),
-            analyzed_at=datetime.now()
-        )
-
-        db.session.add(analysis)
-        db.session.commit()
-
-        return jsonify({
-            "status": "success",
-            "emotion": emotion,
-            "confidence": round(confidence, 2)
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"DeepFace error: {e}")
-
-        return jsonify({
-            "status": "error",
-            "message": "Analysis failed"
-        }), 500
 
 
 
