@@ -21,8 +21,8 @@
     if (containerEl) {
         SESSION_ID    = Number(containerEl.dataset.sessionId);
         FREQUENCE     = Number(containerEl.dataset.freq) * 60;
-        CURRENT_PHASE = containerEl.dataset.phase;
-
+        CURRENT_PHASE = (containerEl.dataset.phase || "").trim().toLowerCase();
+        
         window.sessionId = SESSION_ID;
     }
 
