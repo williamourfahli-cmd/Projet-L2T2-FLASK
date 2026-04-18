@@ -874,27 +874,79 @@ def check_session_status():
 
 @app.route("/analyze_webcam", methods=["POST"])
 def analyze_webcam():
+    """
+    Reçoit une image base64 de la webcam étudiant,
+    l'envoie au serveur DeepFace sur Hugging Face,
+    et sauvegarde le résultat en base de données.
+    """
+ 
     if "user_id" not in session:
         return jsonify({"error": "Unauthorized"}), 403
-
+ 
     payload = request.get_json()
     if not payload or "image" not in payload:
         return jsonify({"error": "Missing image"}), 400
-
-    deepface_url = os.environ.get("DEEPFACE_URL")
-    secret_key = os.environ.get("DEEPFACE_SECRET_KEY", "deepface-secret-key")
-
-    import requests as req
-    response = req.post(
-        f"{deepface_url}/analyze",
-        json={
-            "image": payload["image"],
-            "secret_key": secret_key
-        },
-        timeout=15
-    )
-
-    return jsonify(response.json()), response.status_code
+ 
+    # URL du serveur DeepFace sur Hugging Face (variable d'environnement sur Render)
+    # Exemple : https://ton-username-emotrack-deepface.hf.space
+    deepface_url = os.environ.get("DEEPFACE_SERVER_URL", "")
+    secret_key   = os.environ.get("DEEPFACE_SECRET_KEY", "deepface-secret-key")
+ 
+    if not deepface_url:
+        return jsonify({"status": "error", "message": "DeepFace server not configured"}), 500
+ 
+    try:
+        # ================================
+        # Appel au serveur DeepFace sur Hugging Face
+        # ================================
+        response = http_requests.post(
+            f"{deepface_url}/analyze",
+            json={
+                "image":      payload["image"],
+                "secret_key": secret_key
+            },
+            timeout=120  # 2 minutes : laisse le temps à HF de se réveiller
+        )
+ 
+        if response.status_code != 200:
+            return jsonify({"status": "error", "message": "DeepFace server error"}), 500
+ 
+        result = response.json()
+ 
+        if result.get("status") != "success":
+            return jsonify({"status": "error", "message": "Analysis failed"}), 500
+ 
+        emotion      = result["emotion"]
+        confidence   = result["confidence"]
+        all_emotions = result.get("all_emotions", {})
+ 
+        # ================================
+        # Sauvegarde en base de données
+        # ================================
+        analysis = WebcamAnalysis(
+            session_id=session.get("current_session_id"),
+            user_id=session["user_id"],
+            dominant_emotion=emotion,
+            confidence=confidence,
+            all_emotions=json.dumps(all_emotions)
+        )
+ 
+        db.session.add(analysis)
+        db.session.commit()
+ 
+        return jsonify({
+            "status":     "success",
+            "emotion":    emotion,
+            "confidence": confidence
+        })
+ 
+    except http_requests.exceptions.Timeout:
+        return jsonify({"status": "error", "message": "DeepFace server timeout (réessaie dans 1 minute)"}), 504
+ 
+    except Exception as e:
+        db.session.rollback()
+        print(f"analyze_webcam error: {e}")
+        return jsonify({"status": "error", "message": "Server error"}), 500
 
 # ============================================================
 # LANCEMENT
