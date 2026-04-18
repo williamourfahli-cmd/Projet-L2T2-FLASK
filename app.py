@@ -737,6 +737,10 @@ def submit_qcm():
     # Transition de phase (avant → pendant uniquement)
     if session.get("phase") == "avant":
         session["phase"] = "pendant"
+    # Si c'était le QCM final → on nettoie la session
+    if phase == "apres":
+        session.pop("current_session_id", None)
+        session.pop("phase", None)
 
     return jsonify({"ok": True})
 
