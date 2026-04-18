@@ -68,9 +68,11 @@
     </div>
 
     <!-- QUITTER -->
-    <a href="{{ url_for('leave_session') }}" class="btn danger" style="text-decoration: none; display: inline-block;">
-    Quitter la session
-    </a>
+    <form method="POST" action="{{ url_for('leave_session') }}" style="display:inline;">
+         <button type="submit" class="btn danger" style="text-decoration:none;">
+             Quitter la session
+         </button>
+     </form>
 
     <!-- COUNTDOWN -->
     <div id="countdownStep" class="card" style="display:none; text-align:center;">
