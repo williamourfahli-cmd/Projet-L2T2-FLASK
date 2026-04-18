@@ -98,7 +98,7 @@
                     session_id: SESSION_ID,
                     phase:      CURRENT_PHASE,
                     emotion:    selectedEmotion,
-                    intensity:  Number(slider.value),
+                    slider = payload.get("slider_value"),
                     occurrence: occurrence
                 })
             });
