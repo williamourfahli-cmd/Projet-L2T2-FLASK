@@ -115,9 +115,30 @@
             alert("Impossible d'envoyer vos réponses.");
         }
     };
+    /*===========================================================
+    5.BIP SONORE
+    ============================================================*/
+    function playBip() {
+        const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+        const gain = ctx.createGain();
+        gain.connect(ctx.destination);
+        gain.gain.value = 0.35;
+
+        [0, 0.18].forEach(offset => {
+            const osc = ctx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = 520;
+            osc.connect(gain);
+            osc.start(ctx.currentTime + offset);
+            osc.stop(ctx.currentTime + offset + 0.12);
+        });
+
+        setTimeout(() => ctx.close(), 600);
+    }
+
 
     /* ============================================================
-       5. COUNTDOWN ENTRE QCM
+       6. COUNTDOWN ENTRE QCM
     ============================================================ */
 
     function startCountdown() {
@@ -140,6 +161,7 @@
 
             if (timeLeft <= 0) {
                 clearInterval(interval);
+                playBip() // Appelle la fonction playBit() pour qu'un bip sonore se déclenche à chaque nouveau QCM
                 showNextQCM();
             }
 
