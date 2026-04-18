@@ -552,8 +552,8 @@ def join_session():
     participation = Participation(
         session_id=session_obj.id,
         student_id=session["user_id"],
-        anonyme=anonyme,
-        webcam_active=webcam
+        anonymous=anonymous,
+        webcam_enabled=webcam_enabled
     )
 
     db.session.add(participation)
