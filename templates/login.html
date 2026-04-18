@@ -3,7 +3,6 @@
 {% block body %}
 <div class="container">
     <h1>Connexion</h1>
-    <p>Connecte-toi avec ton email universitaire.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -15,7 +14,7 @@
 
     <form method="post">
         <label for="email">Adresse email</label>
-        <input id="email" name="email" type="email" placeholder="prenom.nom@etu.u-paris.fr ou prenom.nom@u-paris.fr" required>
+        <input id="email" name="email" type="email" placeholder="Adresse émail" required>
 
         <label for="password">Mot de passe</label>
         <input id="password" name="password" type="password" placeholder="Mot de passe" required>
