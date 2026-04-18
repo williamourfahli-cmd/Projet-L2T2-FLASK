@@ -34,19 +34,17 @@
     const subtitle    = document.getElementById("qcmSubtitle");
     const sliderLabel = document.getElementById("sliderLabel");
 
-    if (title && subtitle && sliderLabel) {
-        const texts = {
-            "avant":   ["Avant le cours", "Comment vous sentez-vous ?", "Lien avec le cours ?"],
-            "pendant": ["Pendant le cours", "Votre état actuel ?", "Intensité"],
-            "apres":   ["Après le cours", "Votre ressenti ?", "Impact du cours ?"]
-        };
-
-        const [t, s, l] = texts[CURRENT_PHASE] || texts["pendant"];
-
-        title.innerText       = t;
-        subtitle.innerText    = s;
-        sliderLabel.innerText = l;
-    }
+    const texts = {
+        "avant":   ["Avant le cours", "Comment vous sentez-vous ?", "Lien avec le cours ?"],
+        "pendant": ["Pendant le cours", "Votre état actuel ?", "Intensité"],
+        "apres":   ["Après le cours", "Votre ressenti ?", "Impact du cours ?"]
+    };
+    
+    const [t, s, l] = texts[CURRENT_PHASE] || texts["pendant"];
+    
+    if (title) title.innerText = t;
+    if (subtitle) subtitle.innerText = s;
+    if (sliderLabel) sliderLabel.innerText = l;
 
     /* ============================================================
        3. QCM (EMOJIS + SLIDER)
