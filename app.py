@@ -638,7 +638,7 @@ def qcm():
 
     # Envoi des données au template
     return render_template(
-        "mesures.html",
+        "qcm.html",
         session_id=session_id,
         freq=session_obj.frequence_questionnaire,
         freq_webcam=session_obj.frequence_webcam,
