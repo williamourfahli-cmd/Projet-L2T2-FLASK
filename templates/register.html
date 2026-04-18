@@ -3,7 +3,7 @@
 {% block body %}
 <div class="container">
     <h1>Créer un compte</h1>
-    <p>Utilise ton adresse universitaire. Les étudiants doivent utiliser <strong>@etu.u-paris.fr</strong> et les professeurs <strong>@u-paris.fr</strong>.</p>
+    <p>Utilise une adresse mail valide</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -36,6 +36,22 @@
         <label for="password">Mot de passe</label>
         <input id="password" name="password" type="password" minlength="8" placeholder="Minimum 8 caractères" required>
 
+        <!-- Bouton switch pour séléctionner son role -->
+        
+        <label>Je suis :</label>
+        
+        <div class="role-switch">
+            <span id="label-student" class="role-label active">Étudiant</span>
+        
+            <label class="switch">
+                <input type="checkbox" id="roleToggle">
+                <span class="slider"></span>
+            </label>
+        
+            <span id="label-professor" class="role-label">Professeur</span>
+        </div>
+        
+        <input type="hidden" name="role" id="roleInput" value="student">
         <button class="btn" type="submit">S'inscrire</button>
     </form>
 
