@@ -186,10 +186,10 @@ class Participation(db.Model):
     )
 
     # Participation anonyme ou non
-    anonyme = db.Column(db.Boolean, default=False)
+    anonymous = db.Column(db.Boolean, default=False)
 
     # Webcam activée ou non
-    webcam_active = db.Column(db.Boolean, default=False)
+    webcam_enabled = db.Column(db.Boolean, default=False)
 
     # Date de participation (UTC)
     date_join = db.Column(
@@ -264,12 +264,6 @@ class QCMResponse(db.Model):
     # Emotion sélectionnée (ex : "motivé", "fatigué")
     emotion = db.Column(
         db.String(50),
-        nullable=True
-    )
-
-    # Intensité émotionnelle (optionnel)
-    intensity = db.Column(
-        db.Integer,
         nullable=True
     )
 
