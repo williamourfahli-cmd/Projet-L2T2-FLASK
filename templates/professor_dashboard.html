@@ -67,7 +67,7 @@
                     </form>
                 {% else %}
                     <span style="color: var(--muted);">
-                        Terminée le {{ s.date_fin.strftime("%d/%m/%Y à %Hh%M") }}
+                        Terminée le {{ s.date_fin | heure_fr }}
                     </span>
                 {% endif %}
 
