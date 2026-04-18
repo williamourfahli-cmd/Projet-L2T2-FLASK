@@ -872,7 +872,29 @@ def check_session_status():
 # ANALYSE WEBCAM DEEPFACE
 # ============================================================
 
+@app.route("/analyze_webcam", methods=["POST"])
+def analyze_webcam():
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 403
 
+    payload = request.get_json()
+    if not payload or "image" not in payload:
+        return jsonify({"error": "Missing image"}), 400
+
+    deepface_url = os.environ.get("DEEPFACE_URL")
+    secret_key = os.environ.get("DEEPFACE_SECRET_KEY", "deepface-secret-key")
+
+    import requests as req
+    response = req.post(
+        f"{deepface_url}/analyze",
+        json={
+            "image": payload["image"],
+            "secret_key": secret_key
+        },
+        timeout=15
+    )
+
+    return jsonify(response.json()), response.status_code
 
 # ============================================================
 # LANCEMENT
