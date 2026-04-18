@@ -15,7 +15,7 @@ import base64
 import numpy as np
 #import cv2
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
@@ -58,6 +58,39 @@ mail = Mail(app)
 # Liaison de SQLAlchemy à l'application
 db.init_app(app)
 
+# Création automatique des tables au démarrage du serveur
+with app.app_context():
+    try:
+        db.create_all()
+        print("Base de données connectée et tables créées/vérifiées !")
+        inspector = db.inspect(db.engine)
+        existing_columns = [col["name"] for col in inspector.get_columns("users")]
+ 
+        with db.engine.connect() as conn:
+            if "email_verified" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE"))
+                print(" Colonne email_verified ajoutée.")
+            if "verification_token" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN verification_token VARCHAR(100)"))
+                print("Colonne verification_token ajoutée.")
+            conn.commit()
+ 
+    except Exception as e:
+        print(f" Erreur lors de l'initialisation de la base : {e}")
+
+# ============================================================
+# FILTRE JINJA : affichage heure française (UTC+2)
+# ============================================================
+@app.template_filter('heure_fr')
+def heure_fr(dt):
+    if dt is None:
+        return "En cours"
+    dt_fr = dt + timedelta(hours=2)
+    return dt_fr.strftime("%d/%m/%Y à %Hh%M")
+ 
+# Liaison de SQLAlchemy à l'application
+db.init_app(app)
+ 
 # Création automatique des tables au démarrage du serveur
 with app.app_context():
     try:
