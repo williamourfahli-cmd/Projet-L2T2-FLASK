@@ -85,10 +85,10 @@ with app.app_context():
 # ============================================================
 
 @app.template_filter('heure_fr')
-"""
-Traduit l'heure universelle en heure fr
-"""
 def heure_fr(dt):
+    """
+    Traduit l'heure universelle en heure fr
+    """
     if dt is None:
         return "En cours"
     return dt.astimezone(ZoneInfo("Europe/Paris")).strftime("%d/%m/%Y à %Hh%M")
