@@ -15,7 +15,7 @@ import base64
 import numpy as np
 #import cv2
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
@@ -81,16 +81,16 @@ with app.app_context():
 # ============================================================
 # FONCTIONS UTILITAIRES
 # ============================================================
-    
 
 def validate_email(email: str):
     """
-    Valide une adresse email universitaire et détermine le rôle associé.
+    Valide une adresse email de manière générique.
 
-    Une adresse est valide si :
-    - elle ne contient pas d'espaces
-    - elle se termine par @etu.u-paris.fr (étudiant)
-    - elle se termine par @u-paris.fr (professeur)
+    Règles :
+    - Pas d'espaces
+    - Format standard : texte@texte.domaine
+    - Longueur raisonnable
+    - Normalisation en minuscules
 
     Args:
         email (str): email saisi par l'utilisateur
@@ -98,25 +98,31 @@ def validate_email(email: str):
     Returns:
         tuple:
             - bool : validité
-            - UserRole : rôle associé
+            - str : email normalisé
             - str : message d'erreur éventuel
     """
 
+    if not email:
+        return False, None, "Email requis."
+
+    # Nettoyage
     email = email.strip().lower()
 
-    # Vérification des espaces
+    # Pas d'espaces
     if " " in email:
         return False, None, "L'adresse email ne doit pas contenir d'espaces."
 
-    # Expression régulière pour email universitaire
-    pattern = r"^[a-zA-Z0-9._%+-]+@(etu\.u-paris\.fr|u-paris\.fr)$"
-    if not re.match(pattern, email):
-        return False, None, "Email universitaire requis."
+    # Longueur
+    if len(email) > 254:
+        return False, None, "Email trop long."
 
-    # Attribution du rôle
-    if email.endswith("@etu.u-paris.fr"):
-        return True, UserRole.STUDENT, None
-    return True, UserRole.PROFESSOR, None
+    # Regex standard
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+
+    if not re.match(pattern, email):
+        return False, None, "Format d'email invalide."
+
+    return True, email, None
 
 
 def generate_session_code():
@@ -181,36 +187,44 @@ def register():
 
     if request.method == "POST":
 
-        # Récupération des données
         first_name = request.form.get("first_name", "").strip()
         last_name = request.form.get("last_name", "").strip()
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
+        role_input = request.form.get("role")
 
-        # Validation des champs
-        if not first_name or not last_name or not email or not password:
+        # Validation basique
+        if not all([first_name, last_name, email, password, role_input]):
             flash("Tous les champs sont obligatoires.", "error")
             return render_template("register.html")
 
         if len(password) < 8:
-            flash("Le mot de passe doit contenir au moins 8 caractères.", "error")
+            flash("Mot de passe trop court.", "error")
             return render_template("register.html")
 
         # Validation email
-        is_valid, role, error = validate_email(email)
+        is_valid, email, error = validate_email(email)
         if not is_valid:
             flash(error, "error")
             return render_template("register.html")
 
-        # Vérification existence utilisateur
-        existing_user = User.query.filter_by(email=email).first()
+        # Validation rôle
+        if role_input == "student":
+            role = UserRole.STUDENT
+        elif role_input == "professor":
+            role = UserRole.PROFESSOR
+        else:
+            flash("Rôle invalide.", "error")
+            return render_template("register.html")
 
-        if existing_user:
-            flash("Un compte existe déjà avec cet email.", "warning")
+        # Vérif doublon
+        if User.query.filter_by(email=email).first():
+            flash("Un compte existe déjà.", "warning")
             return redirect(url_for("login"))
 
-        # Création utilisateur
+        # Création user
         token = secrets.token_urlsafe(32)
+
         user = User(
             first_name=first_name,
             last_name=last_name,
@@ -224,24 +238,27 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-         # Envoi de l'email de confirmation
+        # Envoi email
         confirm_url = url_for("confirm_email", token=token, _external=True)
+
         try:
             msg = Message(
-                subject="Confirmez votre inscription sur EmoTrack",
+                subject="Confirme ton compte",
                 recipients=[email]
             )
             msg.html = render_template(
                 "email_confirmation.html",
                 first_name=first_name,
                 confirm_url=confirm_url
-            )    
+            )
             mail.send(msg)
-            flash("Inscription réussie ! Vérifie ta boîte mail pour confirmer ton adresse.", "success")
-        except Exception as e:
-            print(f" Erreur envoi email : {e}")
-            flash("Compte créé mais l'email de confirmation n'a pas pu être envoyé. Contacte un administrateur.", "warning")
 
+            flash("Inscription réussie ! Vérifie ta boîte mail.", "success")
+            return redirect(url_for("login"))
+
+        except Exception as e:
+            print(e)
+            flash("Compte créé mais email non envoyé.", "warning")
             return redirect(url_for("login"))
 
     return render_template("register.html")
@@ -769,7 +786,7 @@ def end_session(session_id):
             
             # Enregistrement de l'horodatage de fin (utilise l'import datetime)
 
-            current_sess.date_fin= datetime.now() 
+            current_sess.date_fin = datetime.now(timezone.utc) 
 
             
             # Validation des modifications dans la base de données SQL
