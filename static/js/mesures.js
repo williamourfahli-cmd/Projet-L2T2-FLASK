@@ -23,6 +23,10 @@
     let sessionHandled  = false; // Flag pour arrêter les boucles si la session finit
     let webcamStream    = null; // Flux vidéo de la caméra
     let webcamInterval  = null; // Timer de l'analyse récurrente
+    // Si on a déjà traité la fin de session, on bloque les vérifications
+    if (sessionStorage.getItem("sessionEndedHandled")) {
+        sessionHandled = true;
+    }
 
     // Extraction sécurisée des données injectées par Flask/Jinja
     if (containerEl) {
@@ -239,18 +243,38 @@
     /**
      * Vérifie si le professeur a mis fin à la session à distance
      */
+    
     async function checkSessionStatus() {
-        if (sessionHandled) return;
+    // Si la session a déjà été traitée ou qu'on est en phase finale, on ne fait rien
+        if (sessionHandled || CURRENT_PHASE === "apres") return;
+    
         try {
             const res = await fetch("/check_session_status");
             const data = await res.json();
+    
+            // Si le professeur a terminé la session
             if (data.status === "ended") {
+    
+                // On marque la session comme traitée pour éviter les appels multiples
                 sessionHandled = true;
+    
+                // On stoppe la webcam proprement
                 stopWebcam();
-                alert("Le professeur a clôturé la session.");
-                window.location.href = "/student_dashboard";
+    
+                // On évite les boucles infinies avec un flag côté navigateur
+                if (!sessionStorage.getItem("sessionEndedHandled")) {
+    
+                    // On stocke un flag pour dire qu'on a déjà traité la fin de session
+                    sessionStorage.setItem("sessionEndedHandled", "true");
+    
+                    // On recharge la page pour afficher le QCM "après"
+                    window.location.reload();
+                }
             }
-        } catch (e) {}
+    
+        } catch (e) {
+            console.warn("Erreur lors de la vérification de session.");
+        }
     }
 
     /* ============================================================
