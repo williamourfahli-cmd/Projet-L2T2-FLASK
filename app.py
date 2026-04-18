@@ -15,8 +15,8 @@ import base64
 import numpy as np
 #import cv2
 import json
-from datetime import datetime
-import zoneinfo
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
@@ -83,6 +83,15 @@ with app.app_context():
 # ============================================================
 # FONCTIONS UTILITAIRES
 # ============================================================
+
+@app.template_filter('heure_fr')
+"""
+Traduit l'heure universelle en heure fr
+"""
+def heure_fr(dt):
+    if dt is None:
+        return "En cours"
+    return dt.astimezone(ZoneInfo("Europe/Paris")).strftime("%d/%m/%Y à %Hh%M")
 
 def validate_email(email: str):
     """
@@ -489,7 +498,7 @@ def create_session():
     new_session = Session(
         code_session=code,
         professor_id=session["user_id"],
-        date_debut = datetime.now(zoneinfo.ZoneInfo("Europe/Paris")),
+        date_debut = datetime.now(timezone.utc),
         frequence_questionnaire=freq_q,
         frequence_webcam=freq_w,
         mode_affichage=mode
@@ -789,7 +798,7 @@ def end_session(session_id):
             
             # Enregistrement de l'horodatage de fin (utilise l'import datetime)
 
-            current_sess.date_fin = datetime.now(zoneinfo.ZoneInfo("Europe/Paris")) 
+            current_sess.date_fin = datetime.now(timezone.utc) 
 
             
             # Validation des modifications dans la base de données SQL
