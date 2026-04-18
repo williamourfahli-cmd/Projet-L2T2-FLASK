@@ -15,7 +15,8 @@ import base64
 import numpy as np
 #import cv2
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
+import zoneinfo
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
@@ -520,6 +521,7 @@ def create_session():
     new_session = Session(
         code_session=code,
         professor_id=session["user_id"],
+        date_debut = datetime.now(zoneinfo.ZoneInfo("Europe/Paris")),
         frequence_questionnaire=freq_q,
         frequence_webcam=freq_w,
         mode_affichage=mode
@@ -819,7 +821,7 @@ def end_session(session_id):
             
             # Enregistrement de l'horodatage de fin (utilise l'import datetime)
 
-            current_sess.date_fin = datetime.now(timezone.utc) 
+            current_sess.date_fin = datetime.now(zoneinfo.ZoneInfo("Europe/Paris")) 
 
             
             # Validation des modifications dans la base de données SQL
