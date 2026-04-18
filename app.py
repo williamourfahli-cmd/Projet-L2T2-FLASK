@@ -257,7 +257,7 @@ def register():
             print(f" Erreur envoi email : {e}")
             flash("Compte créé mais l'email de confirmation n'a pas pu être envoyé. Contacte un administrateur.", "warning")
 
-            return render_template("register.html")
+            return redirect(url_for("login"))
 
     return render_template("register.html")
 
@@ -523,8 +523,8 @@ def join_session():
 
     # Récupération des données du formulaire
     code = request.form["code_session"].strip().upper()
-    anonyme = "anonyme" in request.form
-    webcam = "webcam" in request.form
+    anonymous = "anonymous" in request.form
+    webcam_enabled = "webcam_enabled" in request.form
 
     # Recherche de la session
     session_obj = Session.query.filter_by(code_session=code).first()
@@ -552,8 +552,8 @@ def join_session():
     participation = Participation(
         session_id=session_obj.id,
         student_id=session["user_id"],
-        anonyme=anonyme,
-        webcam_active=webcam
+        anonymous=anonymous,
+        webcam_enabled=webcam_enabled
     )
 
     db.session.add(participation)
@@ -579,12 +579,13 @@ def qcm():
     Affiche le questionnaire étudiant en fonction de la phase.
 
     Fonctionnement :
-    - Vérifie authentification et rôle
-    - Vérifie participation à la session
+    - Vérifie que l'utilisateur est authentifié et est un étudiant
+    - Vérifie qu'une session est en cours côté serveur
+    - Vérifie que l'utilisateur participe à la session
     - Récupère la session en base
-    - Si session terminée → force phase "apres"
-    - Sinon récupère la phase actuelle (avant / pendant)
-    - Envoie les données au template
+    - Si la session est terminée, force la phase "apres"
+    - Si le QCM "avant" a déjà été répondu, passe automatiquement en "pendant"
+    - Envoie les données nécessaires au template
     """
 
     # Vérification authentification
@@ -597,7 +598,6 @@ def qcm():
 
     # Récupération session en cours
     session_id = session.get("current_session_id")
-
     if not session_id:
         return redirect(url_for("student_dashboard"))
 
@@ -610,21 +610,19 @@ def qcm():
     if not participation:
         return redirect(url_for("student_dashboard"))
 
-    # Récupération session DB
+    # Récupération session en base
     session_obj = Session.query.get(session_id)
-
     if not session_obj:
         return redirect(url_for("student_dashboard"))
 
-    # Gestion des phases des questionnaires
-    # Si le prof a terminé la session → phase finale
+    # Si le professeur a terminé la session → phase finale
     if not session_obj.is_active:
         session["phase"] = "apres"
 
-    # Sinon récupérer la phase actuelle
+    # Récupération de la phase actuelle (source de vérité serveur)
     phase = session.get("phase", "avant")
 
-    # Si déjà répondu au "avant", on passe en "pendant"
+    # Transition automatique : si "avant" déjà répondu → passer en "pendant"
     if phase == "avant":
         already_answered = QCMResponse.query.filter_by(
             session_id=session_id,
@@ -636,71 +634,54 @@ def qcm():
             phase = "pendant"
             session["phase"] = "pendant"
 
+    # Envoi des données au template
     return render_template(
         "mesures.html",
         session_id=session_id,
         freq=session_obj.frequence_questionnaire,
         freq_webcam=session_obj.frequence_webcam,
         phase=phase,
-        webcam_active=participation.webcam_active
-)
+        webcam_active=participation.webcam_enabled
+    )
 
 @app.route("/qcm/submit", methods=["POST"])
 def submit_qcm():
     """
-    Enregistre une réponse QCM.
+    Enregistre une réponse QCM de manière sécurisée.
 
     Fonctionnement :
-    - Vérifie authentification
-    - Vérifie validité des données
-    - Vérifie que la session est active
-    - Vérifie participation
-    - Enregistre la réponse
-    - Gère les doublons
-    - Gère la transition de phase (avant → pendant)
+    - Vérifie que l'utilisateur est authentifié
+    - Récupère la session active côté serveur
+    - Vérifie que la session existe et est active (ou en phase finale)
+    - Vérifie que l'utilisateur participe à la session
+    - Détermine la phase côté serveur (ignore le client)
+    - Valide les données reçues (emotion, slider_value)
+    - Calcule automatiquement l'occurrence
+    - Enregistre la réponse en base
+    - Gère les erreurs (doublons, erreurs serveur)
+    - Met à jour la phase si nécessaire
     """
 
     # Vérification authentification
     if "user_id" not in session:
         return jsonify({"error": "Unauthorized"}), 403
 
+    # Récupération session active
+    session_id = session.get("current_session_id")
+    if not session_id:
+        return jsonify({"error": "No active session"}), 400
+
     # Récupération JSON
     payload = request.get_json()
-
     if not payload:
         return jsonify({"error": "Missing JSON payload"}), 400
 
-    # Extraction des données
-    try:
-        session_id = int(payload.get("session_id"))
-        occurrence = int(payload.get("occurrence", 1))
-    except (TypeError, ValueError):
-        return jsonify({"error": "Invalid session_id or occurrence"}), 400
-
-    phase     = payload.get("phase")
-    emotion   = payload.get("emotion")
-    intensity = payload.get("intensity")
-    slider    = payload.get("slider_value")
-
-    if not phase:
-        return jsonify({"error": "Missing phase"}), 400
-
-    # ================================
-    # Vérification session active
-    # ================================
-
+    # Récupération session DB
     session_obj = Session.query.get(session_id)
-
     if not session_obj:
         return jsonify({"error": "Session not found"}), 404
 
-    if not session_obj.is_active:
-        return jsonify({"error": "Session terminée"}), 403
-
-    # ================================
     # Vérification participation
-    # ================================
-
     participant = Participation.query.filter_by(
         session_id=session_id,
         student_id=session["user_id"]
@@ -709,24 +690,53 @@ def submit_qcm():
     if not participant:
         return jsonify({"error": "Unauthorized"}), 403
 
-    # ================================
-    # Création réponse
-    # ================================
+    # Détermination de la phase côté serveur
+    # Si session terminée → phase "apres"
+    if not session_obj.is_active:
+        phase = "apres"
+        session["phase"] = "apres"
+    else:
+        phase = session.get("phase", "avant")
 
+    # Récupération des données
+    emotion = payload.get("emotion")
+    slider_value = payload.get("slider_value")
+
+    # Validation des émotions autorisées
+    allowed_emotions = [
+        "motivé", "neutre", "ennuye", "stresse", "demotive"
+    ]
+
+    if emotion not in allowed_emotions:
+        return jsonify({"error": "Invalid emotion"}), 400
+
+    # Validation slider
+    try:
+        slider_value = int(slider_value)
+        if not (1 <= slider_value <= 5):
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid slider value"}), 400
+
+    # Calcul sécurisé de l'occurrence
+    last_response = QCMResponse.query.filter_by(
+        session_id=session_id,
+        user_id=session["user_id"]
+    ).order_by(QCMResponse.occurrence.desc()).first()
+
+    occurrence = (last_response.occurrence + 1) if last_response else 1
+
+    # Création réponse
     response = QCMResponse(
         session_id=session_id,
         user_id=session["user_id"],
         phase=phase,
         emotion=emotion,
-        intensity=intensity,
-        slider_value=slider,
+        slider_value=slider_value,
         occurrence=occurrence
     )
 
-    # ================================
     # Sauvegarde DB
-    # ================================
-
     try:
         db.session.add(response)
         db.session.commit()
@@ -739,16 +749,11 @@ def submit_qcm():
         db.session.rollback()
         return jsonify({"error": "Server error"}), 500
 
-    # ================================
-    # TRANSITION DE PHASE
-    # ================================
-
-    # Si c'était le QCM "avant" → passer en "pendant"
+    # Transition de phase (avant → pendant uniquement)
     if session.get("phase") == "avant":
         session["phase"] = "pendant"
 
     return jsonify({"ok": True})
-
 
 # ============================================================
 # Fermer une session en cours (coté professeur)
@@ -806,7 +811,7 @@ def end_session(session_id):
 # ============================================================
 
 
-@app.route("/leave_session") 
+@app.route("/leave_session", methods=["POST"])
 def leave_session():
     """
     Permet à un étudiant de quitter une session proprement.
@@ -836,17 +841,17 @@ def check_session_status():
     session_id = session.get("current_session_id")
 
     if not session_id:
-        return {"status": "no_session"}
+        return jsonify({"status": "no_session"})
 
     session_obj = Session.query.get(session_id)
 
     if not session_obj:
-        return {"status": "not_found"}
+        return jsonify({"status": "not_found"})
 
     if not session_obj.is_active:
-        return {"status": "ended"}
+        return jsonify({"status": "ended"})
 
-    return {"status": "active"}
+    return jsonify({"status": "active"})
 
 # ============================================================
 # ANALYSE WEBCAM DEEPFACE
@@ -870,10 +875,10 @@ def analyze_webcam():
         analysis = WebcamAnalysis(
             session_id=session.get("current_session_id"),
             user_id=session["user_id"],
-            emotion=emotion,
+            dominant_emotion=emotion,
             confidence=confidence,
             all_emotions=json.dumps(emotions_dict),
-            timestamp=datetime.now()
+            analyzed_at=datetime.now()
         )
 
         db.session.add(analysis)
@@ -893,32 +898,7 @@ def analyze_webcam():
             "status": "error",
             "message": "Analysis failed"
         }), 500
-    
 
-@app.route("/deepface")
-def deepface():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-    if session.get("role") != "student":
-        return redirect(url_for("login"))
-    
-    session_id = session.get("current_session_id")
-    if not session_id:
-        return redirect(url_for("student_dashboard"))
-
-    session_obj = Session.query.get(session_id)
-
-    participation = Participation.query.filter_by(
-        session_id=session_id,
-        student_id=session["user_id"]
-    ).first()
-
-    return render_template(
-        "deepface.html",
-        session_id=session_id,
-        freq_webcam=session_obj.frequence_webcam,
-        webcam_active=participation.webcam_active
-)
 
 
 # ============================================================
