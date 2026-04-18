@@ -103,7 +103,7 @@
                 sessionStorage.removeItem("sessionEndedHandled");
 
                 alert("Merci ! Vos réponses ont été enregistrées.");
-                window.location.href = "/student_dashboard";
+                window.location.href = "/dashboard/student";
 
             } else {
                 document.getElementById("qcmCard").style.display = "none";
