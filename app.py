@@ -579,12 +579,13 @@ def qcm():
     Affiche le questionnaire étudiant en fonction de la phase.
 
     Fonctionnement :
-    - Vérifie authentification et rôle
-    - Vérifie participation à la session
+    - Vérifie que l'utilisateur est authentifié et est un étudiant
+    - Vérifie qu'une session est en cours côté serveur
+    - Vérifie que l'utilisateur participe à la session
     - Récupère la session en base
-    - Si session terminée → force phase "apres"
-    - Sinon récupère la phase actuelle (avant / pendant)
-    - Envoie les données au template
+    - Si la session est terminée, force la phase "apres"
+    - Si le QCM "avant" a déjà été répondu, passe automatiquement en "pendant"
+    - Envoie les données nécessaires au template
     """
 
     # Vérification authentification
@@ -597,7 +598,6 @@ def qcm():
 
     # Récupération session en cours
     session_id = session.get("current_session_id")
-
     if not session_id:
         return redirect(url_for("student_dashboard"))
 
@@ -610,21 +610,19 @@ def qcm():
     if not participation:
         return redirect(url_for("student_dashboard"))
 
-    # Récupération session DB
+    # Récupération session en base
     session_obj = Session.query.get(session_id)
-
     if not session_obj:
         return redirect(url_for("student_dashboard"))
 
-    # Gestion des phases des questionnaires
-    # Si le prof a terminé la session → phase finale
+    # Si le professeur a terminé la session → phase finale
     if not session_obj.is_active:
         session["phase"] = "apres"
 
-    # Sinon récupérer la phase actuelle
+    # Récupération de la phase actuelle (source de vérité serveur)
     phase = session.get("phase", "avant")
 
-    # Si déjà répondu au "avant", on passe en "pendant"
+    # Transition automatique : si "avant" déjà répondu → passer en "pendant"
     if phase == "avant":
         already_answered = QCMResponse.query.filter_by(
             session_id=session_id,
@@ -636,14 +634,15 @@ def qcm():
             phase = "pendant"
             session["phase"] = "pendant"
 
+    # Envoi des données au template
     return render_template(
         "mesures.html",
         session_id=session_id,
         freq=session_obj.frequence_questionnaire,
         freq_webcam=session_obj.frequence_webcam,
         phase=phase,
-        webcam_active=participation.webcam_active
-)
+        webcam_active=participation.webcam_enabled
+    )
 
 @app.route("/qcm/submit", methods=["POST"])
 def submit_qcm():
@@ -652,38 +651,35 @@ def submit_qcm():
 
     Fonctionnement :
     - Vérifie que l'utilisateur est authentifié
-    - Récupère et valide le payload JSON
-    - Récupère la session en cours côté serveur
-    - Vérifie que la session existe et est active
+    - Récupère la session active côté serveur
+    - Vérifie que la session existe et est active (ou en phase finale)
     - Vérifie que l'utilisateur participe à la session
-    - Détermine la phase côté serveur (ne fait pas confiance au client)
-    - Calcule automatiquement l'occurrence (évite toute manipulation)
-    - Valide les données (emotion, slider_value)
+    - Détermine la phase côté serveur (ignore le client)
+    - Valide les données reçues (emotion, slider_value)
+    - Calcule automatiquement l'occurrence
     - Enregistre la réponse en base
     - Gère les erreurs (doublons, erreurs serveur)
+    - Met à jour la phase si nécessaire
     """
 
     # Vérification authentification
     if "user_id" not in session:
         return jsonify({"error": "Unauthorized"}), 403
 
+    # Récupération session active
+    session_id = session.get("current_session_id")
+    if not session_id:
+        return jsonify({"error": "No active session"}), 400
+
     # Récupération JSON
     payload = request.get_json()
     if not payload:
         return jsonify({"error": "Missing JSON payload"}), 400
 
-    # Récupération session côté serveur
-    session_id = session.get("current_session_id")
-    if not session_id:
-        return jsonify({"error": "No active session"}), 400
-
-    # Vérification session en base
+    # Récupération session DB
     session_obj = Session.query.get(session_id)
     if not session_obj:
         return jsonify({"error": "Session not found"}), 404
-
-    if not session_obj.is_active:
-        return jsonify({"error": "Session ended"}), 403
 
     # Vérification participation
     participant = Participation.query.filter_by(
@@ -695,20 +691,26 @@ def submit_qcm():
         return jsonify({"error": "Unauthorized"}), 403
 
     # Détermination de la phase côté serveur
-    phase = session.get("phase", "avant")
+    # Si session terminée → phase "apres"
+    if not session_obj.is_active:
+        phase = "apres"
+        session["phase"] = "apres"
+    else:
+        phase = session.get("phase", "avant")
 
-    # Validation des données
+    # Récupération des données
     emotion = payload.get("emotion")
     slider_value = payload.get("slider_value")
 
+    # Validation des émotions autorisées
     allowed_emotions = [
-        "happy", "sad", "angry", "fear",
-        "surprise", "disgust", "neutral"
+        "motivé", "neutre", "ennuye", "stresse", "demotive"
     ]
 
     if emotion not in allowed_emotions:
         return jsonify({"error": "Invalid emotion"}), 400
 
+    # Validation slider
     try:
         slider_value = int(slider_value)
         if not (1 <= slider_value <= 5):
@@ -716,7 +718,7 @@ def submit_qcm():
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid slider value"}), 400
 
-    # Calcul sécurisé de l'occurrence (ignore le frontend)
+    # Calcul sécurisé de l'occurrence
     last_response = QCMResponse.query.filter_by(
         session_id=session_id,
         user_id=session["user_id"]
@@ -724,7 +726,7 @@ def submit_qcm():
 
     occurrence = (last_response.occurrence + 1) if last_response else 1
 
-    # Création de la réponse
+    # Création réponse
     response = QCMResponse(
         session_id=session_id,
         user_id=session["user_id"],
@@ -734,7 +736,7 @@ def submit_qcm():
         occurrence=occurrence
     )
 
-    # Sauvegarde en base
+    # Sauvegarde DB
     try:
         db.session.add(response)
         db.session.commit()
@@ -747,12 +749,11 @@ def submit_qcm():
         db.session.rollback()
         return jsonify({"error": "Server error"}), 500
 
-    # Transition de phase (avant -> pendant)
+    # Transition de phase (avant → pendant uniquement)
     if session.get("phase") == "avant":
         session["phase"] = "pendant"
 
     return jsonify({"ok": True})
-
 
 # ============================================================
 # Fermer une session en cours (coté professeur)
