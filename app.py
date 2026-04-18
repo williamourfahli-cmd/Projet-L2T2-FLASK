@@ -257,7 +257,7 @@ def register():
             print(f" Erreur envoi email : {e}")
             flash("Compte créé mais l'email de confirmation n'a pas pu être envoyé. Contacte un administrateur.", "warning")
 
-            return render_template("register.html")
+            return redirect(url_for("login"))
 
     return render_template("register.html")
 
@@ -523,8 +523,8 @@ def join_session():
 
     # Récupération des données du formulaire
     code = request.form["code_session"].strip().upper()
-    anonyme = "anonyme" in request.form
-    webcam = "webcam" in request.form
+    anonymous = "anonymous" in request.form
+    webcam_enabled = "webcam_enabled" in request.form
 
     # Recherche de la session
     session_obj = Session.query.filter_by(code_session=code).first()
@@ -679,7 +679,6 @@ def submit_qcm():
 
     phase     = payload.get("phase")
     emotion   = payload.get("emotion")
-    intensity = payload.get("intensity")
     slider    = payload.get("slider_value")
 
     if not phase:
@@ -718,7 +717,6 @@ def submit_qcm():
         user_id=session["user_id"],
         phase=phase,
         emotion=emotion,
-        intensity=intensity,
         slider_value=slider,
         occurrence=occurrence
     )
@@ -806,7 +804,7 @@ def end_session(session_id):
 # ============================================================
 
 
-@app.route("/leave_session") 
+@app.route("/leave_session", methods=["POST"])
 def leave_session():
     """
     Permet à un étudiant de quitter une session proprement.
@@ -836,17 +834,17 @@ def check_session_status():
     session_id = session.get("current_session_id")
 
     if not session_id:
-        return {"status": "no_session"}
+        return jsonify({"status": "no_session"})
 
     session_obj = Session.query.get(session_id)
 
     if not session_obj:
-        return {"status": "not_found"}
+        return jsonify({"status": "not_found"})
 
     if not session_obj.is_active:
-        return {"status": "ended"}
+        return jsonify({"status": "ended"})
 
-    return {"status": "active"}
+    return jsonify({"status": "active"})
 
 # ============================================================
 # ANALYSE WEBCAM DEEPFACE
@@ -870,10 +868,10 @@ def analyze_webcam():
         analysis = WebcamAnalysis(
             session_id=session.get("current_session_id"),
             user_id=session["user_id"],
-            emotion=emotion,
+            dominant_emotion=emotion,
             confidence=confidence,
             all_emotions=json.dumps(emotions_dict),
-            timestamp=datetime.now()
+            analyzed_at=datetime.now()
         )
 
         db.session.add(analysis)
