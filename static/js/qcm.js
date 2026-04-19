@@ -251,7 +251,7 @@ const emotionBadge = document.getElementById("webcamEmotionBadge"); // badge ém
 // WEBCAM_ACTIVE : true si le prof a activé la webcam pour cette session
 // FREQ_WEBCAM   : fréquence d'analyse en millisecondes
 const WEBCAM_ACTIVE = containerEl?.dataset.webcamActive === "True";
-const FREQ_WEBCAM   = Number(containerEl?.dataset.freqWebcam) * 60 * 1000;
+const FREQ_WEBCAM = Number(containerEl?.dataset.freqWebcam) * 1000;
 
 /* -----------------------------------------------------------
    Démarre la webcam si elle est activée pour cette session
