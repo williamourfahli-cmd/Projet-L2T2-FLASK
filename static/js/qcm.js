@@ -209,7 +209,7 @@
         document.querySelectorAll(".emoji").forEach(e => e.classList.remove("selected"));
         document.getElementById("sliderStep").style.display = "none";
     
-        CURRENT_PHASE = "pendant";
+        CURRENT_PHASE = CURRENT_PHASE || "pendant";
     
         const title       = document.getElementById("qcmTitle");
         const subtitle    = document.getElementById("qcmSubtitle");
