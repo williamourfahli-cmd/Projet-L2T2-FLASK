@@ -1,40 +1,46 @@
 import pytest
 from app import app as flask_app
 from models import db
-import os
+from werkzeug.security import generate_password_hash
 
 
 @pytest.fixture
 def app():
     """
-    Initialise une application Flask de test avec une base SQLite temporaire.
+    Initialise l'application Flask pour les tests.
+
+    OBJECTIFS :
+    - Base isolée
+    - Contexte Flask actif
+    - Pas d'envoi d'emails
     """
 
-    test_db_path = "test.db"
-
     flask_app.config["TESTING"] = True
-    flask_app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{test_db_path}"
+    flask_app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///test.db"
     flask_app.config["WTF_CSRF_ENABLED"] = False
     flask_app.config["MAIL_SUPPRESS_SEND"] = True
 
-    with flask_app.app_context():
-        db.create_all()
+    # 🔥 Activation du contexte Flask (FIX principal)
+    ctx = flask_app.app_context()
+    ctx.push()
+
+    # Création des tables
+    db.create_all()
 
     yield flask_app
 
-    with flask_app.app_context():
-        db.session.remove()
-        db.drop_all()
+    # Nettoyage après test
+    db.session.remove()
+    db.drop_all()
 
-    # Supprimer le fichier de test
-    if os.path.exists(test_db_path):
-        os.remove(test_db_path)
+    # 🔥 Désactivation du contexte
+    ctx.pop()
 
 
 @pytest.fixture
 def client(app):
     """
-    Client Flask pour simuler des requêtes HTTP.
+    Client Flask pour simuler les requêtes HTTP.
     """
     return app.test_client()
 
@@ -42,15 +48,14 @@ def client(app):
 @pytest.fixture
 def create_user(app):
     """
-    Factory pour créer des utilisateurs en base.
+    Factory pour créer des utilisateurs facilement.
 
     SCENARIOS :
-    - utilisateur vérifié / non vérifié
-    - rôle student / professor
+    - user vérifié / non vérifié
+    - student / professor
     """
 
     from models import User, UserRole
-    from werkzeug.security import generate_password_hash
 
     def _create_user(
         email,
