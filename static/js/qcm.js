@@ -203,29 +203,42 @@
     function showNextQCM() {
 
         document.getElementById("countdownStep").style.display = "none";
-
+    
         selectedEmotion = null;
-
+    
         document.querySelectorAll(".emoji").forEach(e => e.classList.remove("selected"));
         document.getElementById("sliderStep").style.display = "none";
-
+    
         CURRENT_PHASE = "pendant";
-
-        const title = document.getElementById("qcmTitle");
-        if (title) title.innerText = "Pendant le cours";
-
+    
+        const title       = document.getElementById("qcmTitle");
+        const subtitle    = document.getElementById("qcmSubtitle");
+        const sliderLabel = document.getElementById("sliderLabel");
+    
+        const texts = {
+            "avant":   ["Avant le cours", "Comment vous sentez-vous ?", "Lien avec le cours ?"],
+            "pendant": ["Pendant le cours", "Votre état actuel ?", "Intensité"],
+            "apres":   ["Après le cours", "Votre ressenti ?", "Impact du cours ?"]
+        };
+    
+        const [t, s, l] = texts["pendant"];
+    
+        if (title) title.innerText = t;
+        if (subtitle) subtitle.innerText = s;
+        if (sliderLabel) sliderLabel.innerText = l;
+    
         document.getElementById("qcmCard").style.display = "block";
     }
 
-    /* ============================================================
-       9. INITIALISATION
-    ============================================================ */
+/* ============================================================
+    9. INITIALISATION
+============================================================ */
 
-    setInterval(checkSessionStatus, 5000);
+ setInterval(checkSessionStatus, 5000);
 
 
-    /* ============================================================
-   10. WEBCAM FLOTTANTE
+ /* ============================================================
+ 10. WEBCAM FLOTTANTE
 ============================================================ */
 
 // Récupération des éléments HTML de la webcam
