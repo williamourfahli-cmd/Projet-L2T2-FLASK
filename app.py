@@ -42,9 +42,6 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-key-a-changer-en-pr
 app.config["SESSION_COOKIE_SAMESITE"] = 'Lax'
 app.config["PERMANENT_SESSION_LIFETIME"] = 7200
 
-if app.config["TESTING"] or not app.config["MAIL_USERNAME"]:
-    app.config["MAIL_SUPPRESS_SEND"] = True
-
 # ============================================================
 # CONFIGURATION FLASK-MAIL
 # ============================================================
