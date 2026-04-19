@@ -1,102 +1,144 @@
-import os
-import json
-
-from flask import request, jsonify, session
-
-import requests as http_requests
-from requests.exceptions import Timeout
-
 from models import db, WebcamAnalysis
+from unittest.mock import patch
 
-@app.route("/analyze_webcam", methods=["POST"])
-def analyze_webcam():
+
+# =========================
+# HELPERS
+# =========================
+
+def login(client, email, password="password123"):
+    return client.post("/login", data={
+        "email": email,
+        "password": password
+    })
+
+
+# =========================
+# TESTS WEBCAM
+# =========================
+
+def test_webcam_not_logged_in(client):
     """
-    Analyse webcam via serveur DeepFace externe + sauvegarde DB
-    Compatible prod + tests (mock)
+    SCENARIO:
+    Utilisateur non connecté.
+
+    EXPECTED:
+    - 403
     """
 
-    # =========================
-    # AUTH
-    # =========================
-    if "user_id" not in session:
-        return jsonify({"error": "Unauthorized"}), 403
+    response = client.post("/analyze_webcam", json={
+        "image": "fake_base64"
+    })
 
-    payload = request.get_json()
+    assert response.status_code == 403
 
-    if not payload or "image" not in payload:
-        return jsonify({"error": "Missing image"}), 400
 
-    # =========================
-    # CONFIG
-    # =========================
-    deepface_url = os.environ.get("DEEPFACE_SERVER_URL")
+def test_webcam_missing_image(client, create_user):
+    """
+    SCENARIO:
+    Pas d'image envoyée.
 
-    if not deepface_url:
-        # en prod → erreur
-        # en test → sera bypass par mock
-        deepface_url = "http://mock-server"
+    EXPECTED:
+    - 400
+    """
 
-    try:
-        # =========================
-        # CALL API
-        # =========================
-        response = http_requests.post(
-            f"{deepface_url}/analyze",
-            json={
-                "image": payload["image"],
-                "secret_key": os.environ.get("DEEPFACE_SECRET_KEY", "test-key")
-            },
-            timeout=120
-        )
+    create_user("user@test.com", verified=True)
+    login(client, "user@test.com")
 
-        # =========================
-        # CHECK STATUS
-        # =========================
-        if response.status_code != 200:
-            return jsonify({"error": "DeepFace error"}), 500
+    response = client.post("/analyze_webcam", json={})
 
-        result = response.json()
+    assert response.status_code == 400
 
-        # =========================
-        # VALIDATION RESULT
-        # =========================
-        if result.get("status") != "success":
-            return jsonify({"error": "Analysis failed"}), 500
 
-        emotion = result.get("emotion")
-        confidence = result.get("confidence")
-        all_emotions = result.get("all_emotions", {})
+@patch("app.http_requests.post")
+def test_webcam_success(mock_post, client, create_user):
+    """
+    SCENARIO:
+    Analyse réussie.
 
-        if not emotion:
-            return jsonify({"error": "Invalid response"}), 500
+    EXPECTED:
+    - Donnée sauvegardée en DB
+    - 200 OK
+    """
 
-        # =========================
-        # DB (aligné avec ton model)
-        # =========================
-        analysis = WebcamAnalysis(
-            session_id=session.get("current_session_id"),
-            user_id=session["user_id"],
-            dominant_emotion=emotion,
-            confidence=confidence,
-            all_emotions=json.dumps(all_emotions)
-        )
+    # Mock réponse DeepFace
+    mock_post.return_value.status_code = 200
+    mock_post.return_value.json.return_value = {
+        "status": "success",
+        "emotion": "happy",
+        "confidence": 0.95,
+        "all_emotions": {"happy": 0.95}
+    }
 
-        db.session.add(analysis)
-        db.session.commit()
+    create_user("user@test.com", verified=True)
+    login(client, "user@test.com")
 
-        # =========================
-        # RESPONSE
-        # =========================
-        return jsonify({
-            "status": "success",
-            "emotion": emotion,
-            "confidence": confidence
-        }), 200
+    # Simuler session active
+    with client.session_transaction() as sess:
+        sess["current_session_id"] = 1
 
-    except http_requests.exceptions.Timeout:
-        return jsonify({"error": "timeout"}), 504
+    response = client.post("/analyze_webcam", json={
+        "image": "fake_base64"
+    })
 
-    except Exception as e:
-        db.session.rollback()
-        print(f"analyze_webcam error: {e}")
-        return jsonify({"error": "server"}), 500
+    assert response.status_code == 200
+
+    # Vérification DB
+    with client.application.app_context():
+        analysis = WebcamAnalysis.query.first()
+
+        assert analysis is not None
+        assert analysis.dominant_emotion == "happy"
+        assert analysis.confidence == 0.95
+
+
+@patch("app.http_requests.post")
+def test_webcam_server_error(mock_post, client, create_user):
+    """
+    SCENARIO:
+    DeepFace renvoie erreur.
+
+    EXPECTED:
+    - 500
+    """
+
+    mock_post.return_value.status_code = 500
+
+    create_user("user@test.com", verified=True)
+    login(client, "user@test.com")
+
+    with client.session_transaction() as sess:
+        sess["current_session_id"] = 1
+
+    response = client.post("/analyze_webcam", json={
+        "image": "fake_base64"
+    })
+
+    assert response.status_code == 500
+
+
+@patch("app.http_requests.post")
+def test_webcam_timeout(mock_post, client, create_user):
+    """
+    SCENARIO:
+    Timeout serveur DeepFace.
+
+    EXPECTED:
+    - 504
+    """
+
+    import requests
+
+    mock_post.side_effect = requests.exceptions.Timeout()
+
+    create_user("user@test.com", verified=True)
+    login(client, "user@test.com")
+
+    with client.session_transaction() as sess:
+        sess["current_session_id"] = 1
+
+    response = client.post("/analyze_webcam", json={
+        "image": "fake_base64"
+    })
+
+    assert response.status_code == 504
