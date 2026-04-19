@@ -17,9 +17,6 @@ def app():
     flask_app.config["WTF_CSRF_ENABLED"] = False
     flask_app.config["MAIL_SUPPRESS_SEND"] = True
 
-    # Lier SQLAlchemy à l'app
-    db.init_app(flask_app)
-
     with flask_app.app_context():
         db.create_all()
 
