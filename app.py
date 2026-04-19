@@ -905,8 +905,13 @@ def analyze_webcam():
     deepface_url = os.environ.get("DEEPFACE_SERVER_URL", "")
     secret_key   = os.environ.get("DEEPFACE_SECRET_KEY", "deepface-secret-key")
  
+    # En production : configuration obligatoire
+    if not deepface_url and not app.config.get("TESTING"):
+        return jsonify({"error": "Serveur DeepFace non configuré. Veuillez contacter l’administrateur."}), 500
+
+    # En test : fallback autorisé (mock)
     if not deepface_url:
-        return jsonify({"status": "error", "message": "DeepFace server not configured"}), 500
+        deepface_url = "http://mock-server"
  
     try:
         # ================================
