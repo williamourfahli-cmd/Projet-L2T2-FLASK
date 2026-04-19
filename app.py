@@ -905,7 +905,7 @@ def analyze_webcam():
  
     # URL du serveur DeepFace sur Hugging Face (variable d'environnement sur Render)
     # Exemple : https://ton-username-emotrack-deepface.hf.space
-    deepface_url = os.environ.get("DEEPFACE_SERVER_URL", "")
+    deepface_url = os.environ.get("DEEPFACE_URL", "")
     secret_key   = os.environ.get("DEEPFACE_SECRET_KEY", "deepface-secret-key")
  
     # En production : configuration obligatoire
