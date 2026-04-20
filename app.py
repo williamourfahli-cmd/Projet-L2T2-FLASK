@@ -899,6 +899,12 @@ def analyze_webcam():
     payload = request.get_json()
     if not payload or "image" not in payload:
         return jsonify({"error": "Missing image"}), 400
+
+    session_id = payload.get("session_id")
+    if not session_id:
+        return jsonify({"error": "Session ID manquant"}), 400
+
+
  
     # URL du serveur DeepFace sur Hugging Face (variable d'environnement sur Render)
     # Exemple : https://ton-username-emotrack-deepface.hf.space
