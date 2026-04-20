@@ -41,9 +41,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-key-a-changer-en-prod")
 app.config["SESSION_COOKIE_SAMESITE"] = 'Lax'
 app.config["PERMANENT_SESSION_LIFETIME"] = 7200
-
-if app.config.get("TESTING") or not app.config.get("MAIL_USERNAME"):
-    app.config["MAIL_SUPPRESS_SEND"] = True
+app.config["MAIL_SUPPRESS_SEND"] = False
 
 # ============================================================
 # CONFIGURATION FLASK-MAIL
