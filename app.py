@@ -85,6 +85,202 @@ with app.app_context():
 # FONCTIONS UTILITAIRES
 # ============================================================
 
+# ============================================================
+# RESULTATS SESSION (MODE COURBE)
+# ============================================================
+
+def normalize_emotion_label(raw_emotion):
+    """
+    Normalise les émotions QCM + DeepFace vers un jeu commun
+    pour le graphique en bâtons.
+    """
+    if not raw_emotion:
+        return "inconnu"
+
+    emotion = raw_emotion.strip().lower()
+
+    mapping = {
+        # QCM
+        "motivé": "motivé",
+        "neutre": "neutre",
+        "ennuye": "ennuyé",
+        "stresse": "stressé",
+        "demotive": "démotivé",
+
+        # DeepFace
+        "happy": "motivé",
+        "neutral": "neutre",
+        "surprise": "motivé",
+        "fear": "stressé",
+        "sad": "démotivé",
+        "angry": "démotivé",
+        "disgust": "démotivé"
+    }
+
+    return mapping.get(emotion, emotion)
+
+
+def qcm_engagement_score(response):
+    """
+    Convertit une réponse QCM en score d'engagement sur 100.
+    On prend en compte :
+    - l'émotion choisie
+    - l'intensité du slider (1 à 5)
+    """
+    base_scores = {
+        "motivé": 100,
+        "neutre": 60,
+        "ennuye": 30,
+        "stresse": 40,
+        "demotive": 10
+    }
+
+    emotion = (response.emotion or "").strip().lower()
+    base_score = base_scores.get(emotion, 50)
+
+    slider = response.slider_value if response.slider_value is not None else 3
+    slider_factor = max(1, min(slider, 5)) / 5.0
+
+    return round(base_score * slider_factor, 2)
+
+
+def webcam_engagement_score(analysis):
+    """
+    Convertit une analyse webcam en score d'engagement sur 100.
+    On prend en compte :
+    - l'émotion dominante détectée
+    - la confiance de DeepFace
+    """
+    base_scores = {
+        "happy": 90,
+        "neutral": 60,
+        "surprise": 70,
+        "fear": 25,
+        "sad": 20,
+        "angry": 15,
+        "disgust": 10
+    }
+
+    emotion = (analysis.dominant_emotion or "").strip().lower()
+    base_score = base_scores.get(emotion, 50)
+
+    confidence = analysis.confidence if analysis.confidence is not None else 50.0
+    confidence_factor = max(0.0, min(confidence, 100.0)) / 100.0
+
+    return round(base_score * confidence_factor, 2)
+
+
+def build_session_curve_data(session_id):
+    """
+    Construit les données nécessaires au mode 'courbe' :
+
+    1. Une courbe d'engagement général dans le temps
+    2. Une répartition des émotions sous forme de bâtons
+
+    Retour :
+        {
+            "engagement_labels": [...],
+            "engagement_values": [...],
+            "emotion_labels": [...],
+            "emotion_values": [...],
+            "qcm_count": int,
+            "webcam_count": int
+        }
+    """
+
+    # Récupération de toutes les réponses QCM de la session
+    qcm_rows = QCMResponse.query.filter_by(
+        session_id=session_id
+    ).order_by(QCMResponse.answered_at.asc()).all()
+
+    # Récupération de toutes les analyses webcam de la session
+    webcam_rows = WebcamAnalysis.query.filter_by(
+        session_id=session_id
+    ).order_by(WebcamAnalysis.analyzed_at.asc()).all()
+
+    # -------------------------------
+    # 1. Préparation courbe engagement
+    # -------------------------------
+    # On regroupe par minute pour éviter trop de points
+    # Format clé : "YYYY-MM-DD HH:MM"
+    time_buckets = {}
+
+    # -------------------------------
+    # 2. Préparation histogramme émotions
+    # -------------------------------
+    emotion_counts = {
+        "motivé": 0,
+        "neutre": 0,
+        "ennuyé": 0,
+        "stressé": 0,
+        "démotivé": 0
+    }
+
+    # ===== Données QCM =====
+    for row in qcm_rows:
+        if not row.answered_at:
+            continue
+
+        bucket = row.answered_at.strftime("%Y-%m-%d %H:%M")
+
+        if bucket not in time_buckets:
+            time_buckets[bucket] = []
+
+        score = qcm_engagement_score(row)
+        time_buckets[bucket].append(score)
+
+        normalized = normalize_emotion_label(row.emotion)
+        if normalized in emotion_counts:
+            emotion_counts[normalized] += 1
+
+    # ===== Données webcam =====
+    for row in webcam_rows:
+        if not row.analyzed_at:
+            continue
+
+        bucket = row.analyzed_at.strftime("%Y-%m-%d %H:%M")
+
+        if bucket not in time_buckets:
+            time_buckets[bucket] = []
+
+        score = webcam_engagement_score(row)
+        time_buckets[bucket].append(score)
+
+        normalized = normalize_emotion_label(row.dominant_emotion)
+        if normalized in emotion_counts:
+            emotion_counts[normalized] += 1
+
+    # Construction de la courbe triée chronologiquement
+    sorted_keys = sorted(time_buckets.keys())
+
+    engagement_labels = []
+    engagement_values = []
+
+    for key in sorted_keys:
+        scores = time_buckets[key]
+        avg_score = round(sum(scores) / len(scores), 2) if scores else 0
+
+        # Affichage simplifié de l'heure pour le graphe
+        # Ex: "20:53"
+        display_label = key[-5:]
+
+        engagement_labels.append(display_label)
+        engagement_values.append(avg_score)
+
+    # Construction du graphe émotions
+    emotion_labels = list(emotion_counts.keys())
+    emotion_values = list(emotion_counts.values())
+
+    return {
+        "engagement_labels": engagement_labels,
+        "engagement_values": engagement_values,
+        "emotion_labels": emotion_labels,
+        "emotion_values": emotion_values,
+        "qcm_count": len(qcm_rows),
+        "webcam_count": len(webcam_rows)
+    }
+    
+
 @app.template_filter('heure_fr')
 def heure_fr(dt):
     """
@@ -512,7 +708,7 @@ def create_session():
 
     flash(f"Session créée ! Code : {code}", "success")
 
-    return redirect(url_for("professor_dashboard"))
+    return redirect(url_for("session_results", session_id=new_session.id))
 
 # ============================================================
 # REJOINDRE SESSION
@@ -1064,6 +1260,62 @@ def analyze_webcam():
         db.session.rollback()
         print(f"Erreur DB: {e}")
         return jsonify({"error": "Erreur lors de l'enregistrement en base"}), 500
+
+
+
+@app.route("/session/<int:session_id>/results")
+def session_results(session_id):
+    """
+    Page résultats d'une session pour le professeur.
+
+    Fonctionnement :
+    - vérifie que l'utilisateur est un professeur
+    - vérifie que la session existe
+    - vérifie que le professeur est bien le créateur de la session
+    - prépare les données pour le mode d'affichage
+    - affiche result.html
+    """
+
+    # Sécurité : accès réservé au professeur
+    if session.get("role") != "professor":
+        flash("Accès réservé au professeur.", "error")
+        return redirect(url_for("login"))
+
+    # Recherche session
+    session_obj = Session.query.get(session_id)
+
+    if not session_obj:
+        flash("Session introuvable.", "error")
+        return redirect(url_for("professor_dashboard"))
+
+    # Sécurité : seul le créateur de la session peut voir ses résultats
+    if session_obj.professor_id != session.get("user_id"):
+        flash("Accès non autorisé à cette session.", "error")
+        return redirect(url_for("professor_dashboard"))
+
+    # Nombre d'étudiants ayant rejoint la session
+    participants_count = Participation.query.filter_by(
+        session_id=session_id
+    ).count()
+
+    # Mode d'affichage
+    mode = (session_obj.mode_affichage or "").strip().lower()
+
+    # Pour l'instant on prépare seulement le mode "courbe"
+    curve_data = build_session_curve_data(session_id)
+
+    return render_template(
+        "result.html",
+        session_obj=session_obj,
+        mode=mode,
+        participants_count=participants_count,
+        engagement_labels=curve_data["engagement_labels"],
+        engagement_values=curve_data["engagement_values"],
+        emotion_labels=curve_data["emotion_labels"],
+        emotion_values=curve_data["emotion_values"],
+        qcm_count=curve_data["qcm_count"],
+        webcam_count=curve_data["webcam_count"]
+    )
         
 # ============================================================
 # LANCEMENT
