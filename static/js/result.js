@@ -153,7 +153,7 @@
         emotionChart = new Chart(emotionCanvas, {
             type: "bar",
             data: {
-                labels: labels,
+                labels: labels.map(emotionLabelToEmoji),
                 datasets: [
                     {
                         label: "Nombre d'occurrences",
