@@ -1,22 +1,18 @@
 (function () {
 
     /* ============================================================
-       1. RÉCUPÉRATION DES DONNÉES INJECTÉES PAR LE TEMPLATE
+       1. RÉCUPÉRATION DES DONNÉES INITIALES INJECTÉES PAR FLASK
     ============================================================ */
 
     // Élément HTML caché contenant les tableaux JSON
     const dataEl = document.getElementById("resultsPageData");
 
-    // Si l'élément n'existe pas, on arrête le script
-    // (par exemple si on affiche un autre mode que "courbe")
+    // Si on n'est pas en mode courbe, on quitte le script
     if (!dataEl) return;
 
     /**
      * Lit une valeur JSON stockée dans un attribut data-*
-     * et la convertit en tableau JS.
-     *
-     * Exemple :
-     * data-engagement-labels='["20:10","20:11"]'
+     * puis la convertit en tableau JavaScript.
      */
     function readJsonData(attrName) {
         const raw = dataEl.getAttribute(attrName);
@@ -31,43 +27,58 @@
         }
     }
 
-    // Données pour la courbe d'engagement
-    const engagementLabels = readJsonData("data-engagement-labels");
-    const engagementValues = readJsonData("data-engagement-values");
-
-    // Données pour l'histogramme émotionnel
-    const emotionLabels = readJsonData("data-emotion-labels");
-    const emotionValues = readJsonData("data-emotion-values");
+    // Données initiales envoyées par Flask
+    let engagementLabels = readJsonData("data-engagement-labels");
+    let engagementValues = readJsonData("data-engagement-values");
+    let emotionLabels = readJsonData("data-emotion-labels");
+    let emotionValues = readJsonData("data-emotion-values");
 
     /* ============================================================
-       2. CRÉATION DU GRAPHIQUE D'ENGAGEMENT GÉNÉRAL
+       2. RÉCUPÉRATION DE L'ID SESSION DEPUIS L'URL
     ============================================================ */
 
-    // Canvas du graphique de courbe
-    const engagementCanvas = document.getElementById("engagementChart");
+    // Exemple d'URL :
+    // /session/13/results
+    const pathParts = window.location.pathname.split("/");
+    const sessionId = pathParts[2];
 
-    // On vérifie qu'il existe bien dans le HTML
-    if (engagementCanvas) {
-        new Chart(engagementCanvas, {
-            type: "line", // type courbe
+    if (!sessionId) {
+        console.warn("Session ID introuvable dans l'URL");
+        return;
+    }
+
+    /* ============================================================
+       3. VARIABLES GLOBALES DES GRAPHIQUES
+    ============================================================ */
+
+    let engagementChart = null;
+    let emotionChart = null;
+
+    /* ============================================================
+       4. FONCTION DE CRÉATION / MISE À JOUR DU GRAPHIQUE COURBE
+    ============================================================ */
+
+    function renderEngagementChart(labels, values) {
+        const engagementCanvas = document.getElementById("engagementChart");
+        if (!engagementCanvas) return;
+
+        // Si le graphique existe déjà, on le détruit avant recréation
+        if (engagementChart) {
+            engagementChart.destroy();
+        }
+
+        engagementChart = new Chart(engagementCanvas, {
+            type: "line",
             data: {
-                labels: engagementLabels,
+                labels: labels,
                 datasets: [
                     {
                         label: "Engagement général",
-                        data: engagementValues,
-
-                        // Couleurs du tracé
+                        data: values,
                         borderColor: "#8b5cf6",
                         backgroundColor: "rgba(139, 92, 246, 0.18)",
-
-                        // Remplissage sous la courbe
                         fill: true,
-
-                        // Arrondit légèrement la courbe
                         tension: 0.35,
-
-                        // Style des points
                         pointRadius: 4,
                         pointHoverRadius: 6,
                         pointBackgroundColor: "#ec4899",
@@ -79,22 +90,16 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-
-                // Interaction utilisateur au survol
                 interaction: {
                     mode: "index",
                     intersect: false
                 },
-
                 plugins: {
-                    // Style de la légende
                     legend: {
                         labels: {
                             color: "#e2e8f0"
                         }
                     },
-
-                    // Style des bulles au survol
                     tooltip: {
                         backgroundColor: "rgba(15, 23, 42, 0.95)",
                         titleColor: "#ffffff",
@@ -103,8 +108,6 @@
                         borderWidth: 1
                     }
                 },
-
-                // Style des axes
                 scales: {
                     x: {
                         ticks: {
@@ -135,33 +138,33 @@
     }
 
     /* ============================================================
-       3. CRÉATION DU GRAPHIQUE DE RÉPARTITION ÉMOTIONNELLE
+       5. FONCTION DE CRÉATION / MISE À JOUR DU GRAPHIQUE BARRES
     ============================================================ */
 
-    // Canvas du graphique en bâtons
-    const emotionCanvas = document.getElementById("emotionChart");
+    function renderEmotionChart(labels, values) {
+        const emotionCanvas = document.getElementById("emotionChart");
+        if (!emotionCanvas) return;
 
-    // On vérifie qu'il existe bien dans le HTML
-    if (emotionCanvas) {
-        new Chart(emotionCanvas, {
-            type: "bar", // histogramme vertical
+        // Si le graphique existe déjà, on le détruit avant recréation
+        if (emotionChart) {
+            emotionChart.destroy();
+        }
+
+        emotionChart = new Chart(emotionCanvas, {
+            type: "bar",
             data: {
-                labels: emotionLabels,
+                labels: labels,
                 datasets: [
                     {
                         label: "Nombre d'occurrences",
-                        data: emotionValues,
-
-                        // Couleur de chaque barre
+                        data: values,
                         backgroundColor: [
-                            "rgba(34, 197, 94, 0.75)",   // motivé
-                            "rgba(148, 163, 184, 0.75)", // neutre
-                            "rgba(245, 158, 11, 0.75)",  // ennuyé
-                            "rgba(236, 72, 153, 0.75)",  // stressé
-                            "rgba(239, 68, 68, 0.75)"    // démotivé
+                            "rgba(34, 197, 94, 0.75)",
+                            "rgba(148, 163, 184, 0.75)",
+                            "rgba(245, 158, 11, 0.75)",
+                            "rgba(236, 72, 153, 0.75)",
+                            "rgba(239, 68, 68, 0.75)"
                         ],
-
-                        // Bordure de chaque barre
                         borderColor: [
                             "rgba(34, 197, 94, 1)",
                             "rgba(148, 163, 184, 1)",
@@ -169,7 +172,6 @@
                             "rgba(236, 72, 153, 1)",
                             "rgba(239, 68, 68, 1)"
                         ],
-
                         borderWidth: 1.5,
                         borderRadius: 10
                     }
@@ -178,16 +180,12 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-
                 plugins: {
-                    // Style de la légende
                     legend: {
                         labels: {
                             color: "#e2e8f0"
                         }
                     },
-
-                    // Style du tooltip
                     tooltip: {
                         backgroundColor: "rgba(15, 23, 42, 0.95)",
                         titleColor: "#ffffff",
@@ -196,8 +194,6 @@
                         borderWidth: 1
                     }
                 },
-
-                // Style des axes
                 scales: {
                     x: {
                         ticks: {
@@ -221,5 +217,73 @@
             }
         });
     }
+
+    /* ============================================================
+       6. MISE À JOUR DES CARTES DE STATS
+    ============================================================ */
+
+    function updateStatsCards(data) {
+        const statValues = document.querySelectorAll(".stat-value");
+
+        // Ordre actuel dans le HTML :
+        // 0 = participants
+        // 1 = qcm_count
+        // 2 = webcam_count
+        // 3 = statut
+        if (statValues.length >= 4) {
+            statValues[0].innerText = data.participants_count;
+            statValues[1].innerText = data.qcm_count;
+            statValues[2].innerText = data.webcam_count;
+            statValues[3].innerText = data.session_is_active ? "En cours" : "Terminée";
+        }
+    }
+
+    /* ============================================================
+       7. CHARGEMENT DES DONNÉES DEPUIS LA ROUTE JSON
+    ============================================================ */
+
+    async function refreshResultsData() {
+        try {
+            const response = await fetch(`/session/${sessionId}/results/data`);
+
+            if (!response.ok) {
+                throw new Error("Erreur lors du chargement des résultats");
+            }
+
+            const data = await response.json();
+
+            if (!data.ok) {
+                console.warn("Réponse JSON invalide");
+                return;
+            }
+
+            // Mise à jour des tableaux en mémoire
+            engagementLabels = data.engagement_labels || [];
+            engagementValues = data.engagement_values || [];
+            emotionLabels = data.emotion_labels || [];
+            emotionValues = data.emotion_values || [];
+
+            // Mise à jour des graphiques
+            renderEngagementChart(engagementLabels, engagementValues);
+            renderEmotionChart(emotionLabels, emotionValues);
+
+            // Mise à jour des cartes statistiques
+            updateStatsCards(data);
+
+        } catch (e) {
+            console.warn("Impossible de rafraîchir les résultats", e);
+        }
+    }
+
+    /* ============================================================
+       8. INITIALISATION
+    ============================================================ */
+
+    // Premier affichage immédiat avec les données injectées par Flask
+    renderEngagementChart(engagementLabels, engagementValues);
+    renderEmotionChart(emotionLabels, emotionValues);
+
+    // Rafraîchissement automatique toutes les 10 secondes
+    setInterval(refreshResultsData, 10000);
 
 })();
