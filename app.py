@@ -529,27 +529,47 @@ def join_session():
     - Vérifie qu'il n'est pas déjà inscrit
     - Crée une participation
     - Initialise la phase à "avant"
+    - Enregistre l'id de session dans la session Flask
     - Redirige vers le QCM
     """
 
+    print("=== /join_session called ===")
+    print(f"user_id = {session.get('user_id')}")
+    print(f"role = {session.get('role')}")
+
     # Vérification du rôle
     if session.get("role") != "student":
+        print("Erreur: utilisateur non étudiant")
         return redirect(url_for("login"))
 
     # Récupération des données du formulaire
-    code = request.form["code_session"].strip().upper()
+    code = request.form.get("code_session", "").strip().upper()
     anonymous = "anonymous" in request.form
     webcam_enabled = "webcam_enabled" in request.form
+
+    print(f"code_session = {code}")
+    print(f"anonymous = {anonymous}")
+    print(f"webcam_enabled = {webcam_enabled}")
+
+    if not code:
+        print("Erreur: code session vide")
+        flash("Veuillez entrer un code session.", "error")
+        return redirect(url_for("student_dashboard"))
 
     # Recherche de la session
     session_obj = Session.query.filter_by(code_session=code).first()
 
     if session_obj is None:
+        print("Erreur: session introuvable")
         flash("Code session invalide.", "error")
         return redirect(url_for("student_dashboard"))
 
+    print(f"session_obj.id = {session_obj.id}")
+    print(f"session_obj.is_active = {session_obj.is_active}")
+
     # Vérification que la session est active
     if not session_obj.is_active:
+        print("Erreur: session inactive")
         flash("Cette session est terminée.", "error")
         return redirect(url_for("student_dashboard"))
 
@@ -560,25 +580,39 @@ def join_session():
     ).first()
 
     if existing:
+        print("Erreur: participation déjà existante")
         flash("Vous êtes déjà inscrit à cette session.", "warning")
         return redirect(url_for("student_dashboard"))
 
     # Création de la participation
-    participation = Participation(
-        session_id=session_obj.id,
-        student_id=session["user_id"],
-        anonymous=anonymous,
-        webcam_enabled=webcam_enabled
-    )
+    try:
+        participation = Participation(
+            session_id=session_obj.id,
+            student_id=session["user_id"],
+            anonymous=anonymous,
+            webcam_enabled=webcam_enabled
+        )
 
-    db.session.add(participation)
-    db.session.commit()
+        db.session.add(participation)
+        db.session.commit()
 
-    # Initialisation de la phase (IMPORTANT)
+        print("Participation enregistrée en base")
+        print(f"participation.id = {participation.id}")
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erreur DB join_session: {e}")
+        flash("Erreur lors de l'inscription à la session.", "error")
+        return redirect(url_for("student_dashboard"))
+
+    # Initialisation session Flask
     session["phase"] = "avant"
     session["current_session_id"] = session_obj.id
-
     session.modified = True
+
+    print(f"session['phase'] = {session.get('phase')}")
+    print(f"session['current_session_id'] = {session.get('current_session_id')}")
+    print("Redirection vers /qcm")
 
     return redirect(url_for("qcm"))
     
