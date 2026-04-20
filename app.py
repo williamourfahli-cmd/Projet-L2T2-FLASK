@@ -91,8 +91,18 @@ with app.app_context():
 
 def normalize_emotion_label(raw_emotion):
     """
-    Normalise les émotions QCM + DeepFace vers un jeu commun
-    pour le graphique en bâtons.
+    Normalise les émotions provenant :
+    - des QCM (émotions en français)
+    - de DeepFace (émotions en anglais)
+
+    Le but est d'obtenir un seul jeu d'émotions cohérent
+    pour le graphique en bâtons de la page résultats.
+
+    Args:
+        raw_emotion (str): émotion brute lue en base
+
+    Returns:
+        str: émotion normalisée
     """
     if not raw_emotion:
         return "inconnu"
@@ -100,14 +110,14 @@ def normalize_emotion_label(raw_emotion):
     emotion = raw_emotion.strip().lower()
 
     mapping = {
-        # QCM
+        # Emotions QCM
         "motivé": "motivé",
         "neutre": "neutre",
         "ennuye": "ennuyé",
         "stresse": "stressé",
         "demotive": "démotivé",
 
-        # DeepFace
+        # Emotions DeepFace
         "happy": "motivé",
         "neutral": "neutre",
         "surprise": "motivé",
@@ -123,9 +133,20 @@ def normalize_emotion_label(raw_emotion):
 def qcm_engagement_score(response):
     """
     Convertit une réponse QCM en score d'engagement sur 100.
-    On prend en compte :
-    - l'émotion choisie
-    - l'intensité du slider (1 à 5)
+
+    Logique choisie pour la V1 :
+    - chaque émotion a un score de base
+    - ce score est ensuite ajusté avec la valeur du slider (1 à 5)
+
+    Exemple :
+    - motivé + slider élevé => score fort
+    - démotivé + slider faible => score bas
+
+    Args:
+        response (QCMResponse): objet ORM QCMResponse
+
+    Returns:
+        float: score d'engagement sur 100
     """
     base_scores = {
         "motivé": 100,
@@ -138,8 +159,12 @@ def qcm_engagement_score(response):
     emotion = (response.emotion or "").strip().lower()
     base_score = base_scores.get(emotion, 50)
 
+    # Valeur du slider sécurisée
     slider = response.slider_value if response.slider_value is not None else 3
-    slider_factor = max(1, min(slider, 5)) / 5.0
+    slider = max(1, min(slider, 5))
+
+    # Le slider pondère légèrement le score
+    slider_factor = slider / 5.0
 
     return round(base_score * slider_factor, 2)
 
@@ -147,9 +172,16 @@ def qcm_engagement_score(response):
 def webcam_engagement_score(analysis):
     """
     Convertit une analyse webcam en score d'engagement sur 100.
-    On prend en compte :
-    - l'émotion dominante détectée
-    - la confiance de DeepFace
+
+    Logique choisie pour la V1 :
+    - chaque émotion détectée par DeepFace a un score de base
+    - le score est pondéré par la confiance de détection (0 à 100)
+
+    Args:
+        analysis (WebcamAnalysis): objet ORM WebcamAnalysis
+
+    Returns:
+        float: score d'engagement sur 100
     """
     base_scores = {
         "happy": 90,
@@ -165,49 +197,62 @@ def webcam_engagement_score(analysis):
     base_score = base_scores.get(emotion, 50)
 
     confidence = analysis.confidence if analysis.confidence is not None else 50.0
-    confidence_factor = max(0.0, min(confidence, 100.0)) / 100.0
+    confidence = max(0.0, min(confidence, 100.0))
+
+    confidence_factor = confidence / 100.0
 
     return round(base_score * confidence_factor, 2)
 
 
 def build_session_curve_data(session_id):
     """
-    Construit les données nécessaires au mode 'courbe' :
+    Prépare les données nécessaires à la page résultats
+    pour le mode d'affichage "courbe".
 
-    1. Une courbe d'engagement général dans le temps
-    2. Une répartition des émotions sous forme de bâtons
+    Cette fonction construit :
+    1. une série temporelle pour la courbe d'engagement
+    2. une répartition émotionnelle pour l'histogramme
+    3. les compteurs utiles à afficher
 
-    Retour :
-        {
-            "engagement_labels": [...],
-            "engagement_values": [...],
-            "emotion_labels": [...],
-            "emotion_values": [...],
-            "qcm_count": int,
-            "webcam_count": int
-        }
+    Méthode V1 :
+    - on récupère toutes les réponses QCM de la session
+    - on récupère toutes les analyses webcam de la session
+    - on regroupe les scores par minute
+    - on calcule une moyenne par minute
+    - on compte les émotions globales
+
+    Args:
+        session_id (int): identifiant de la session
+
+    Returns:
+        dict: données prêtes à être envoyées au template
     """
 
-    # Récupération de toutes les réponses QCM de la session
+    # ========================
+    # 1. Récupération données QCM
+    # ========================
     qcm_rows = QCMResponse.query.filter_by(
         session_id=session_id
     ).order_by(QCMResponse.answered_at.asc()).all()
 
-    # Récupération de toutes les analyses webcam de la session
+    # ========================
+    # 2. Récupération données webcam
+    # ========================
     webcam_rows = WebcamAnalysis.query.filter_by(
         session_id=session_id
     ).order_by(WebcamAnalysis.analyzed_at.asc()).all()
 
-    # -------------------------------
-    # 1. Préparation courbe engagement
-    # -------------------------------
-    # On regroupe par minute pour éviter trop de points
-    # Format clé : "YYYY-MM-DD HH:MM"
+    # ========================
+    # 3. Préparation structure de courbe
+    # ========================
+    # Dictionnaire :
+    # clé   = minute au format "YYYY-MM-DD HH:MM"
+    # valeur = liste des scores tombant dans cette minute
     time_buckets = {}
 
-    # -------------------------------
-    # 2. Préparation histogramme émotions
-    # -------------------------------
+    # ========================
+    # 4. Préparation histogramme émotions
+    # ========================
     emotion_counts = {
         "motivé": 0,
         "neutre": 0,
@@ -216,41 +261,58 @@ def build_session_curve_data(session_id):
         "démotivé": 0
     }
 
-    # ===== Données QCM =====
+    # ========================
+    # 5. Traitement des réponses QCM
+    # ========================
     for row in qcm_rows:
+
+        # Sécurité si pas de date
         if not row.answered_at:
             continue
 
+        # Regroupement par minute
         bucket = row.answered_at.strftime("%Y-%m-%d %H:%M")
 
         if bucket not in time_buckets:
             time_buckets[bucket] = []
 
+        # Calcul du score d'engagement pour cette réponse
         score = qcm_engagement_score(row)
         time_buckets[bucket].append(score)
 
+        # Comptage émotion normalisée
         normalized = normalize_emotion_label(row.emotion)
         if normalized in emotion_counts:
             emotion_counts[normalized] += 1
 
-    # ===== Données webcam =====
+    # ========================
+    # 6. Traitement des analyses webcam
+    # ========================
     for row in webcam_rows:
+
+        # Sécurité si pas de date
         if not row.analyzed_at:
             continue
 
+        # Regroupement par minute
         bucket = row.analyzed_at.strftime("%Y-%m-%d %H:%M")
 
         if bucket not in time_buckets:
             time_buckets[bucket] = []
 
+        # Calcul du score d'engagement webcam
         score = webcam_engagement_score(row)
         time_buckets[bucket].append(score)
 
+        # Comptage émotion normalisée
         normalized = normalize_emotion_label(row.dominant_emotion)
         if normalized in emotion_counts:
             emotion_counts[normalized] += 1
 
-    # Construction de la courbe triée chronologiquement
+    # ========================
+    # 7. Construction finale de la courbe
+    # ========================
+    # On trie les minutes dans l'ordre chronologique
     sorted_keys = sorted(time_buckets.keys())
 
     engagement_labels = []
@@ -258,19 +320,25 @@ def build_session_curve_data(session_id):
 
     for key in sorted_keys:
         scores = time_buckets[key]
+
+        # Moyenne des scores de la minute
         avg_score = round(sum(scores) / len(scores), 2) if scores else 0
 
-        # Affichage simplifié de l'heure pour le graphe
-        # Ex: "20:53"
+        # Pour le graphe, on n'affiche que HH:MM
         display_label = key[-5:]
 
         engagement_labels.append(display_label)
         engagement_values.append(avg_score)
 
-    # Construction du graphe émotions
+    # ========================
+    # 8. Construction histogramme émotions
+    # ========================
     emotion_labels = list(emotion_counts.keys())
     emotion_values = list(emotion_counts.values())
 
+    # ========================
+    # 9. Retour final
+    # ========================
     return {
         "engagement_labels": engagement_labels,
         "engagement_values": engagement_values,
@@ -279,7 +347,6 @@ def build_session_curve_data(session_id):
         "qcm_count": len(qcm_rows),
         "webcam_count": len(webcam_rows)
     }
-    
 
 @app.template_filter('heure_fr')
 def heure_fr(dt):
@@ -1262,48 +1329,56 @@ def analyze_webcam():
         return jsonify({"error": "Erreur lors de l'enregistrement en base"}), 500
 
 
-
 @app.route("/session/<int:session_id>/results")
 def session_results(session_id):
     """
-    Page résultats d'une session pour le professeur.
+    Affiche la page de résultats d'une session côté professeur.
 
     Fonctionnement :
-    - vérifie que l'utilisateur est un professeur
-    - vérifie que la session existe
-    - vérifie que le professeur est bien le créateur de la session
-    - prépare les données pour le mode d'affichage
-    - affiche result.html
+    - vérifie que l'utilisateur connecté est bien un professeur
+    - vérifie que la session demandée existe
+    - vérifie que le professeur connecté est bien le créateur de la session
+    - récupère les statistiques générales de la session
+    - construit les données nécessaires au mode "courbe"
+    - affiche le template result.html
+
+    Args:
+        session_id (int): identifiant de la session demandé dans l'URL
+
+    Returns:
+        HTML: page de résultats ou redirection sécurisée
     """
 
-    # Sécurité : accès réservé au professeur
+    # Vérification du rôle utilisateur
     if session.get("role") != "professor":
         flash("Accès réservé au professeur.", "error")
         return redirect(url_for("login"))
 
-    # Recherche session
+    # Recherche de la session en base
     session_obj = Session.query.get(session_id)
 
     if not session_obj:
         flash("Session introuvable.", "error")
         return redirect(url_for("professor_dashboard"))
 
-    # Sécurité : seul le créateur de la session peut voir ses résultats
+    # Vérification de sécurité :
+    # seul le professeur qui a créé la session peut voir ses résultats
     if session_obj.professor_id != session.get("user_id"):
         flash("Accès non autorisé à cette session.", "error")
         return redirect(url_for("professor_dashboard"))
 
-    # Nombre d'étudiants ayant rejoint la session
+    # Comptage du nombre d'étudiants participants
     participants_count = Participation.query.filter_by(
         session_id=session_id
     ).count()
 
-    # Mode d'affichage
+    # Récupération du mode d'affichage choisi à la création
     mode = (session_obj.mode_affichage or "").strip().lower()
 
-    # Pour l'instant on prépare seulement le mode "courbe"
+    # Construction des données pour les graphiques
     curve_data = build_session_curve_data(session_id)
 
+    # Envoi de toutes les données au template HTML
     return render_template(
         "result.html",
         session_obj=session_obj,
