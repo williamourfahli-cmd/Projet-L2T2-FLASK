@@ -1391,6 +1391,50 @@ def session_results(session_id):
         qcm_count=curve_data["qcm_count"],
         webcam_count=curve_data["webcam_count"]
     )
+
+@app.route("/session/<int:session_id>/results/data")
+def session_results_data(session_id):
+    """
+    Retourne les données JSON de la page résultats.
+
+    Cette route est utilisée par le JavaScript pour rafraîchir
+    automatiquement les graphiques sans recharger toute la page.
+    """
+
+    # Sécurité : accès réservé au professeur
+    if session.get("role") != "professor":
+        return jsonify({"error": "Accès refusé"}), 403
+
+    # Recherche de la session
+    session_obj = Session.query.get(session_id)
+
+    if not session_obj:
+        return jsonify({"error": "Session introuvable"}), 404
+
+    # Vérification de sécurité :
+    # seul le professeur créateur peut consulter les données
+    if session_obj.professor_id != session.get("user_id"):
+        return jsonify({"error": "Accès non autorisé"}), 403
+
+    # Nombre de participants
+    participants_count = Participation.query.filter_by(
+        session_id=session_id
+    ).count()
+
+    # Récupération des données de courbe
+    curve_data = build_session_curve_data(session_id)
+
+    return jsonify({
+        "ok": True,
+        "participants_count": participants_count,
+        "qcm_count": curve_data["qcm_count"],
+        "webcam_count": curve_data["webcam_count"],
+        "session_is_active": session_obj.is_active,
+        "engagement_labels": curve_data["engagement_labels"],
+        "engagement_values": curve_data["engagement_values"],
+        "emotion_labels": curve_data["emotion_labels"],
+        "emotion_values": curve_data["emotion_values"]
+    })
         
 # ============================================================
 # LANCEMENT
