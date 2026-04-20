@@ -17,7 +17,7 @@ import numpy as np
 import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-import requests as http_requests
+import requests
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
