@@ -275,6 +275,18 @@
         }
     }
 
+    function emotionLabelToEmoji(label) {
+        const mapping = {
+            "motivé": "🙂",
+            "neutre": "😐",
+            "ennuyé": "😴",
+            "stressé": "😰",
+            "démotivé": "😞"
+        };
+    
+        return mapping[label] || label;
+    }
+
     /* ============================================================
        8. INITIALISATION
     ============================================================ */
