@@ -78,8 +78,10 @@ def test_webcam_success(mock_post, client, create_user):
         sess["current_session_id"] = 1
 
     response = client.post("/analyze_webcam", json={
-        "image": "fake_base64"
+    "image": "fake_base64",
+    "session_id": 1
     })
+
 
     assert response.status_code == 200
 
