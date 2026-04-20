@@ -287,6 +287,10 @@ async function startWebcam() {
 async function captureAndAnalyze() {
     // Sécurité : on ne fait rien si webcam désactivée
     if (!WEBCAM_ACTIVE) return;
+    if (!SESSION_ID) {
+        console.warn("SESSION_ID manquant, analyse webcam annulée");
+        return;
+    }
 
     // Prépare le canvas avec les mêmes dimensions que la vidéo
     const ctx = webcamCanvas.getContext("2d");
