@@ -271,7 +271,8 @@ def build_session_curve_data(session_id):
             continue
 
         # Regroupement par minute
-        bucket = row.answered_at.strftime("%Y-%m-%d %H:%M")
+        local_dt = row.answered_at.astimezone(ZoneInfo("Europe/Paris"))
+        bucket = local_dt.strftime("%Y-%m-%d %H:%M")
 
         if bucket not in time_buckets:
             time_buckets[bucket] = []
@@ -295,7 +296,8 @@ def build_session_curve_data(session_id):
             continue
 
         # Regroupement par minute
-        bucket = row.analyzed_at.strftime("%Y-%m-%d %H:%M")
+        local_dt = row.analyzed_at.astimezone(ZoneInfo("Europe/Paris"))
+        bucket = local_dt.strftime("%Y-%m-%d %H:%M")
 
         if bucket not in time_buckets:
             time_buckets[bucket] = []
