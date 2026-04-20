@@ -949,7 +949,7 @@ def analyze_webcam():
         # Sauvegarde en base de données
         # ================================
         analysis = WebcamAnalysis(
-            session_id=session.get("current_session_id"),
+            session_id=session_id,
             user_id=session["user_id"],
             dominant_emotion=emotion,
             confidence=confidence,
