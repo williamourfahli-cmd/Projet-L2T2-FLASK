@@ -274,6 +274,7 @@ async function startWebcam() {
 
         // Lance une analyse à intervalle régulier (fréquence définie par le prof)
         // Si FREQ_WEBCAM est 0 ou invalide → toutes les 30 secondes par défaut
+        await captureAndAnalyze();
         setInterval(captureAndAnalyze, FREQ_WEBCAM || 30000);
 
     } catch (e) {
