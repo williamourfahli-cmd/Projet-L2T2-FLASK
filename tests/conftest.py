@@ -20,7 +20,7 @@ def app():
     flask_app.config["WTF_CSRF_ENABLED"] = False
     flask_app.config["MAIL_SUPPRESS_SEND"] = True
 
-    # 🔥 Activation du contexte Flask (FIX principal)
+    # Activation du contexte Flask (FIX principal)
     ctx = flask_app.app_context()
     ctx.push()
 
@@ -33,7 +33,7 @@ def app():
     db.session.remove()
     db.drop_all()
 
-    # 🔥 Désactivation du contexte
+    # Désactivation du contexte
     ctx.pop()
 
 
