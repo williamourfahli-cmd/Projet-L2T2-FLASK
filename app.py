@@ -940,6 +940,10 @@ def analyze_webcam():
         emotion      = result["emotion"]
         confidence   = result["confidence"]
         all_emotions = result.get("all_emotions", {})
+
+        current_session_id = session.get("current_session_id")
+        if not current_session_id:
+            return jsonify({"error": "Session ID manquant"}), 400
  
         # ================================
         # Sauvegarde en base de données
