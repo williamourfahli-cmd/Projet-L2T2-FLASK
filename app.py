@@ -938,7 +938,7 @@ def analyze_webcam():
         confidence   = result["confidence"]
         all_emotions = result.get("all_emotions", {})
 
-        session_id = payload.get("session_id")
+        session_id = payload.get("session_id") or session.get("current_session_id")
         if not session_id:
             return jsonify({"error": "Session ID manquant"}), 400
  
