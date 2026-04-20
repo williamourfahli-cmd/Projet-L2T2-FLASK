@@ -1489,9 +1489,7 @@ def api_students(session_id):
     if session_obj.professor_id != session.get("user_id"):
         return jsonify({"error": "Accès non autorisé"}), 403
 
-    participations = Participation.query.filter_by(
-        session_id=session_id
-    ).all()
+    participations = Participation.query.filter_by(session_id=session_id).all()
 
     students = []
     for p in participations:
@@ -1499,7 +1497,7 @@ def api_students(session_id):
             students.append({
                 "id": p.id,
                 "anonymous": True,
-                "joined_at": p.created_at.isoformat() if hasattr(p, "created_at") and p.created_at else None
+                "joined_at": p.date_join.isoformat() if p.date_join else None
             })
         else:
             students.append({
@@ -1507,7 +1505,7 @@ def api_students(session_id):
                 "anonymous": False,
                 "first_name": p.student.first_name,
                 "last_name":  p.student.last_name,
-                "joined_at":  p.created_at.isoformat() if hasattr(p, "created_at") and p.created_at else None
+                "joined_at": p.date_join.isoformat() if p.date_join else None
             })
 
     return jsonify({"students": students})
