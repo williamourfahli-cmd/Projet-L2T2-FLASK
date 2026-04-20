@@ -777,7 +777,7 @@ def create_session():
 
     flash(f"Session créée ! Code : {code}", "success")
 
-    return redirect(url_for("session_results", session_id=new_session.id))
+    return redirect(url_for("session_active", session_id=new_session.id))
 
 # ============================================================
 # REJOINDRE SESSION
@@ -1437,6 +1437,80 @@ def session_results_data(session_id):
         "emotion_labels": curve_data["emotion_labels"],
         "emotion_values": curve_data["emotion_values"]
     })
+
+# ============================================================
+# PAGE SESSION ACTIVE (vue temps réel professeur)
+# ============================================================
+
+@app.route("/session/<int:session_id>/active")
+def session_active(session_id):
+    """
+    Affiche la page temps réel d'une session en cours.
+    Le professeur y voit les étudiants connectés.
+    """
+    if session.get("role") != "professor":
+        flash("Accès réservé au professeur.", "error")
+        return redirect(url_for("login"))
+
+    session_obj = Session.query.get(session_id)
+
+    if not session_obj:
+        flash("Session introuvable.", "error")
+        return redirect(url_for("professor_dashboard"))
+
+    if session_obj.professor_id != session.get("user_id"):
+        flash("Accès non autorisé.", "error")
+        return redirect(url_for("professor_dashboard"))
+
+    return render_template(
+        "session_active.html",
+        session_id=session_id,
+        session_code=session_obj.code_session
+    )
+
+
+# ============================================================
+# API — Liste des étudiants connectés (polling JS)
+# ============================================================
+
+@app.route("/api/session/<int:session_id>/students")
+def api_students(session_id):
+    """
+    Retourne la liste des étudiants actuellement connectés à la session.
+    Appelée toutes les 5s par le JS de session_active.html.
+    """
+    if session.get("role") != "professor":
+        return jsonify({"error": "Accès refusé"}), 403
+
+    session_obj = Session.query.get(session_id)
+    if not session_obj:
+        return jsonify({"error": "Session introuvable"}), 404
+
+    if session_obj.professor_id != session.get("user_id"):
+        return jsonify({"error": "Accès non autorisé"}), 403
+
+    participations = Participation.query.filter_by(
+        session_id=session_id
+    ).all()
+
+    students = []
+    for p in participations:
+        if p.anonymous:
+            students.append({
+                "id": p.id,
+                "anonymous": True,
+                "joined_at": p.created_at.isoformat() if hasattr(p, "created_at") and p.created_at else None
+            })
+        else:
+            students.append({
+                "id": p.id,
+                "anonymous": False,
+                "first_name": p.student.first_name,
+                "last_name":  p.student.last_name,
+                "joined_at":  p.created_at.isoformat() if hasattr(p, "created_at") and p.created_at else None
+            })
+
+    return jsonify({"students": students})
         
 # ============================================================
 # LANCEMENT
