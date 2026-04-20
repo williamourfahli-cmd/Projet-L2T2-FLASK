@@ -925,6 +925,14 @@ def analyze_webcam():
     Reçoit une image webcam depuis le front,
     l'envoie au serveur DeepFace Hugging Face,
     puis enregistre le résultat en base.
+
+    Sécurités ajoutées :
+    - vérification utilisateur connecté
+    - vérification session active côté Flask
+    - vérification payload JSON
+    - vérification image présente et non vide
+    - vérification configuration DeepFace
+    - gestion propre des erreurs réseau / réponse HF / base de données
     """
 
     print("=== /analyze_webcam called ===")
@@ -945,16 +953,22 @@ def analyze_webcam():
         print("Erreur: aucune session active dans la session Flask")
         return jsonify({"error": "Aucune session active"}), 400
 
-    # Vérification présence image
+    # Vérification présence payload JSON
     data = request.get_json(silent=True)
     if not data:
         print("Erreur: payload JSON absent")
         return jsonify({"error": "Payload JSON invalide"}), 400
 
+    # Vérification présence image
     image_b64 = data.get("image")
     if not image_b64:
         print("Erreur: image absente du payload")
         return jsonify({"error": "Image manquante"}), 400
+
+    # Sécurité minimale : évite d'envoyer à HF une image vide ou quasi vide
+    if len(image_b64.strip()) < 50:
+        print("Erreur: image vide ou trop courte")
+        return jsonify({"error": "Image vide"}), 400
 
     # Vérification configuration DeepFace
     deepface_url = os.environ.get("DEEPFACE_URL", "").strip()
@@ -1001,6 +1015,7 @@ def analyze_webcam():
             "details": response.text
         }), 502
 
+    # Vérification parsing JSON de la réponse HF
     try:
         result = response.json()
     except Exception as e:
@@ -1015,6 +1030,7 @@ def analyze_webcam():
     print(f"confidence = {confidence}")
     print(f"all_emotions = {all_emotions}")
 
+    # Vérification minimale du contenu renvoyé par HF
     if not emotion:
         print("Erreur: emotion absente dans la réponse HF")
         return jsonify({"error": "Emotion absente dans la réponse DeepFace"}), 502
