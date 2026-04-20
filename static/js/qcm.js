@@ -253,7 +253,7 @@ const emotionBadge = document.getElementById("webcamEmotionBadge"); // badge ém
 const WEBCAM_ACTIVE = ["true", "1", "yes"].includes(
     containerEl?.dataset.webcamActive?.toLowerCase()
 );
-const FREQ_WEBCAM = Number(containerEl?.dataset.freqWebcam) * 1000;
+const FREQ_WEBCAM = Number(containerEl?.dataset.freqWebcam) * 1000 * 60;
 
 /* -----------------------------------------------------------
    Démarre la webcam si elle est activée pour cette session
