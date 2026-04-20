@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Session {{ session_code }} — En cours{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/session_active.css') }}">
+{% endblock %}
+
+{% block body %}
+
+<div class="dashboard">
+
+    <!-- HEADER -->
+    <div class="topbar">
+        <div class="session-title">
+            <h1>Session <span class="gradient-text">{{ session_code }}</span></h1>
+            <span class="session-badge">🟢 En cours</span>
+        </div>
+        <div class="topbar-actions">
+            <form action="{{ url_for('end_session', session_id=session_id) }}" method="POST">
+                <button class="btn danger">Terminer la session</button>
+            </form>
+            <a class="btn secondary" href="{{ url_for('professor_dashboard') }}">← Retour</a>
+        </div>
+    </div>
+
+    <!-- STATS RAPIDES -->
+    <div class="grid stats-grid">
+        <div class="card stat-card">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Étudiants connectés</div>
+        </div>
+        <div class="card stat-card">
+            <div class="stat-value" id="stat-named">0</div>
+            <div class="stat-label">Identifiés</div>
+        </div>
+        <div class="card stat-card">
+            <div class="stat-value" id="stat-anon">0</div>
+            <div class="stat-label">Anonymes</div>
+        </div>
+    </div>
+
+    <!-- LISTE ÉTUDIANTS -->
+    <div class="card">
+        <div class="students-header">
+            <h2>👥 Étudiants connectés</h2>
+            <div class="refresh-info">
+                <span class="pulse-dot"></span>
+                <span id="last-update" class="update-label">Mise à jour…</span>
+            </div>
+        </div>
+
+        <div id="students-container" class="students-grid">
+            <div class="empty-state" id="empty-state">
+                <div class="empty-icon">🎓</div>
+                <p>En attente d'étudiants…</p>
+                <p style="font-size:0.8rem;">
+                    Partagez le code 
+                    <strong style="color:var(--text)">{{ session_code }}</strong> 
+                    à vos étudiants
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CODE SESSION -->
+    <div class="card code-share-card">
+        <h2>🔗 Code de session</h2>
+        <p>Partagez ce code avec vos étudiants pour qu'ils rejoignent la session.</p>
+        <div class="code-display">
+            <span id="session-code-display">{{ session_code }}</span>
+            <button class="btn secondary copy-btn" 
+                    onclick="copyCode('{{ session_code }}')">
+                📋 Copier
+            </button>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const SESSION_ID = "{{ session_id }}";
+    const SESSION_CODE = "{{ session_code }}";
+</script>
+<script src="{{ url_for('static', filename='js/session_active.js') }}"></script>
+{% endblock %}
