@@ -664,12 +664,12 @@ input:checked + .slider:before {
 .logo-container {
     position: absolute; /* Permet de le placer librement par rapport à la page */
     top: 10px;          /* Distance depuis le haut */
-    left: 20px;        /* Distance depuis la droite */
+    right: 20px;        /* Distance depuis la droite */
     z-index: 1000;      /* Pour qu'il passe au-dessus du fond */
 }
 
 .logo-container img {
-    width: 50px;       /* Ajuste la taille ici selon tes goûts */
+    width: 180px;       /* Ajuste la taille ici selon tes goûts */
     height: auto;
     border-radius: 5px; /* Optionnel : adoucit un peu les bords de l'image */
 }
