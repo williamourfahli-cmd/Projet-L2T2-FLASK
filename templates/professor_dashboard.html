@@ -63,7 +63,7 @@
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     {% if s.is_active %}
                         <!-- Bouton pour revenir sur la page résultats -->
-                        <a href="{{ url_for('session_results', session_id=s.id) }}" class="btn primary">
+                        <a href="{{ url_for('session_results', session_id=s.id) }}" class="btn success">
                             Voir résultats
                         </a>
                         <form action="{{ url_for('end_session', session_id=s.id) }}" method="POST" style="margin:0;">
