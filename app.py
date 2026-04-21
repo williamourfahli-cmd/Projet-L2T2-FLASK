@@ -777,7 +777,7 @@ def create_session():
 
     flash(f"Session créée ! Code : {code}", "success")
 
-    return redirect(url_for("session_active", session_id=new_session.id))
+    return redirect(url_for("session_results", session_id=new_session.id))
 
 # ============================================================
 # REJOINDRE SESSION
