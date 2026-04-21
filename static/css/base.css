@@ -658,3 +658,18 @@ input:checked + .slider:before {
         font-size: 1.7rem;
     }
 }
+
+/* Logo Emotrack */
+
+.logo-container {
+    position: absolute; /* Permet de le placer librement par rapport à la page */
+    top: 20px;          /* Distance depuis le haut */
+    right: 30px;        /* Distance depuis la droite */
+    z-index: 1000;      /* Pour qu'il passe au-dessus du fond */
+}
+
+.logo-container img {
+    width: 180px;       /* Ajuste la taille ici selon tes goûts */
+    height: auto;
+    border-radius: 5px; /* Optionnel : adoucit un peu les bords de l'image */
+}
