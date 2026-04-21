@@ -53,24 +53,34 @@
     <!-- SESSIONS -->
     <div class="card">
         <h2>📚 Mes sessions</h2>
-
         {% for s in sessions %}
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-
-                <strong>{{ s.code_session }}</strong>
-
-                {% if s.is_active %}
-                    <form action="{{ url_for('end_session', session_id=s.id) }}" method="POST">
-                        <button class="btn danger">
-                            Terminer
-                        </button>
-                    </form>
-                {% else %}
-                    <span style="color: var(--muted);">
-                        Terminée le {{ s.date_fin | heure_fr }}
-                    </span>
-                {% endif %}
-
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:12px; flex-wrap:wrap;">
+        
+                <div>
+                    <strong>{{ s.code_session }}</strong>
+                </div>
+        
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        
+                    <!-- Bouton pour revenir sur la page résultats -->
+                    <a href="{{ url_for('session_results', session_id=s.id) }}" class="btn primary">
+                        Voir résultats
+                    </a>
+        
+                    {% if s.is_active %}
+                        <form action="{{ url_for('end_session', session_id=s.id) }}" method="POST" style="margin:0;">
+                            <button class="btn danger">
+                                Terminer
+                            </button>
+                        </form>
+                    {% else %}
+                        <span style="color: var(--muted);">
+                            Terminée le {{ s.date_fin | heure_fr }}
+                        </span>
+                    {% endif %}
+        
+                </div>
+        
             </div>
         {% else %}
             <p>Aucune session</p>
