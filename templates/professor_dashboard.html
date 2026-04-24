@@ -37,12 +37,24 @@
                 <label>Fréquence webcam (min)</label>
                 <input type="number" name="freq_webcam" min="1" required>
 
-                <label>Mode affichage</label>
-                <select name="mode_affichage">
-                    <option value="courbes">Courbes</option>
-                    <option value="moyennes">Moyennes</option>
-                    <option value="alertes">Alertes</option>
-                </select>
+                <label>Modes d'affichage</label>
+                
+                <div class="mode-checkboxes">
+                    <label>
+                        <input type="checkbox" name="modes_affichage" value="courbes">
+                        Courbes
+                    </label>
+                
+                    <label>
+                        <input type="checkbox" name="modes_affichage" value="moyennes">
+                        Moyennes
+                    </label>
+                
+                    <label>
+                        <input type="checkbox" name="modes_affichage" value="alertes">
+                        Alertes
+                    </label>
+                </div>
 
                 <button class="btn success">Créer la session</button>
             </form>
