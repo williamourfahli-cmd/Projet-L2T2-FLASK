@@ -123,20 +123,16 @@ def normalize_qcm_emotion_label(raw_emotion):
 
     return mapping.get(emotion, raw_emotion)
 
-
 def normalize_webcam_emotion_label(raw_emotion):
     """
-    Normalise les émotions provenant de DeepFace.
-
-    Objectif :
-    - garder les émotions DeepFace séparées des émotions QCM
-    - afficher des labels propres dans le donut webcam
+    Normalise les émotions provenant de DeepFace
+    pour afficher une légende en français dans le donut webcam.
 
     Args:
         raw_emotion (str): émotion brute détectée par DeepFace
 
     Returns:
-        str: émotion normalisée
+        str: émotion normalisée en français
     """
     if not raw_emotion:
         return "Inconnu"
@@ -144,16 +140,17 @@ def normalize_webcam_emotion_label(raw_emotion):
     emotion = raw_emotion.strip().lower()
 
     mapping = {
-        "happy": "Happy",
-        "neutral": "Neutral",
+        "happy": "Joie",
+        "neutral": "Neutre",
         "surprise": "Surprise",
-        "fear": "Fear",
-        "sad": "Sad",
-        "angry": "Angry",
-        "disgust": "Disgust"
+        "fear": "Peur",
+        "sad": "Tristesse",
+        "angry": "Colère",
+        "disgust": "Dégoût"
     }
 
     return mapping.get(emotion, raw_emotion)
+
 
 
 def qcm_engagement_score(response):
@@ -279,13 +276,13 @@ def build_session_curve_data(session_id):
     }
 
     webcam_emotion_counts = {
-        "Happy": 0,
-        "Neutral": 0,
+        "Joie": 0,
+        "Neutre": 0,
         "Surprise": 0,
-        "Fear": 0,
-        "Sad": 0,
-        "Angry": 0,
-        "Disgust": 0
+        "Peur": 0,
+        "Tristesse": 0,
+        "Colère": 0,
+        "Dégoût": 0
     }
 
     # ========================
