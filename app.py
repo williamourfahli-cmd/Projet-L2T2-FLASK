@@ -1475,18 +1475,6 @@ def session_results_data(session_id):
         )
     ).count()
    
-
-    # Comptage des participants encore actifs
-    active_participants_count = Participation.query.filter(
-        Participation.session_id == session_id,
-        ~Participation.student_id.in_(
-            db.session.query(QCMResponse.user_id).filter(
-                QCMResponse.session_id == session_id,
-                QCMResponse.phase == "apres"
-            )
-        )
-    ).count()
-
     raw_modes = (session_obj.mode_affichage or "").strip().lower()
     selected_modes = [m.strip() for m in raw_modes.split(",") if m.strip()]
 
@@ -1496,7 +1484,6 @@ def session_results_data(session_id):
     return jsonify({
         "ok": True,
         "participants_count": participants_count,
-        "active_participants_count": active_participants_count,
         "active_participants_count": active_participants_count,
         "qcm_count": curve_data["qcm_count"],
         "webcam_count": curve_data["webcam_count"],
