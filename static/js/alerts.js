@@ -1,4 +1,4 @@
-/* ===== LOGIQUE DE FILTRAGE ===== */
+/* ===== LOGIQUE DE FILTRAGE ===== 
 const filterBtns = document.querySelectorAll(".filter-btn");
 const alertItems = document.querySelectorAll(".alert-item");
 
@@ -25,4 +25,4 @@ filterBtns.forEach(btn => {
             item.style.display = visible ? "flex" : "none";
         });
     });
-});
+}); */
