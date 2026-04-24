@@ -727,7 +727,7 @@ input:checked + .slider:before {
 /*==================================================*/
 /* STYLE DES ALERTES */
 /*==================================================*/
-/* ===== BANNIÈRE ALERTE CLASSE ===== */
+/* ===== BANNIÈRE ALERTE CLASSE ===== 
 .alert-banner {
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.4);
@@ -756,9 +756,9 @@ input:checked + .slider:before {
     display: block;
     color: #ef4444;
     margin-bottom: 2px;
-}
+} */
 
-/* ===== POPUPS ALERTES INDIVIDUELLES ===== */
+/* ===== POPUPS ALERTES INDIVIDUELLES ===== 
 #alert-popups-container {
     position: fixed;
     bottom: 24px;
@@ -835,10 +835,10 @@ input:checked + .slider:before {
     background: rgba(239, 68, 68, 0.2);
     color: #fca5a5;
     margin-top: 6px;
-}
+} */
 
 
-/* ===== FILTRES ===== */
+/* ===== FILTRES ===== 
 .filters {
     display: flex;
     gap: 10px;
@@ -866,9 +866,9 @@ input:checked + .slider:before {
     background: rgba(124,58,237,0.2);
     border-color: rgba(124,58,237,0.6);
     color: var(--text);
-}
+} */
 
-/* ===== LISTE ALERTES ===== */
+/* ===== LISTE ALERTES ===== 
 .alerts-list {
     display: flex;
     flex-direction: column;
@@ -888,9 +888,9 @@ input:checked + .slider:before {
 
 .alert-item:hover {
     border-color: rgba(239,68,68,0.2);
-}
+} */
 
-/* Indicateur coloré selon le niveau */
+/* Indicateur coloré selon le niveau 
 .alert-dot {
     width: 10px;
     height: 10px;
@@ -962,9 +962,9 @@ input:checked + .slider:before {
     font-size: 0.8rem;
     white-space: nowrap;
     margin-top: 2px;
-}
+} */
 
-/* ===== EMPTY STATE ===== */
+/* ===== EMPTY STATE ===== 
 .empty-state {
     text-align: center;
     padding: 60px 20px;
@@ -973,5 +973,5 @@ input:checked + .slider:before {
 .empty-state-icon {
     font-size: 3rem;
     margin-bottom: 16px;
-}
-/*===============================================*/
+} 
+===============================================*/
