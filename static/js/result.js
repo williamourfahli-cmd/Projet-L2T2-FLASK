@@ -1,18 +1,17 @@
 (function () {
 
     /* ============================================================
-       1. RÉCUPÉRATION DES DONNÉES INITIALES INJECTÉES PAR FLASK
+       1. RÉCUPÉRATION DES DONNÉES INJECTÉES PAR FLASK
     ============================================================ */
 
-    // Élément HTML caché contenant les tableaux JSON
     const dataEl = document.getElementById("resultsPageData");
 
-    // Si on n'est pas en mode courbe, on quitte le script
+    // Si l'élément n'existe pas, on quitte
     if (!dataEl) return;
 
     /**
      * Lit une valeur JSON stockée dans un attribut data-*
-     * puis la convertit en tableau JavaScript.
+     * et la convertit en tableau JavaScript.
      */
     function readJsonData(attrName) {
         const raw = dataEl.getAttribute(attrName);
@@ -27,18 +26,20 @@
         }
     }
 
-    // Données initiales envoyées par Flask
+    // Données initiales
     let engagementLabels = readJsonData("data-engagement-labels");
     let engagementValues = readJsonData("data-engagement-values");
-    let emotionLabels = readJsonData("data-emotion-labels");
-    let emotionValues = readJsonData("data-emotion-values");
+
+    let qcmEmotionLabels = readJsonData("data-qcm-emotion-labels");
+    let qcmEmotionValues = readJsonData("data-qcm-emotion-values");
+
+    let webcamEmotionLabels = readJsonData("data-webcam-emotion-labels");
+    let webcamEmotionValues = readJsonData("data-webcam-emotion-values");
 
     /* ============================================================
-       2. RÉCUPÉRATION DE L'ID SESSION DEPUIS L'URL
+       2. RÉCUPÉRATION DE L'ID DE SESSION DEPUIS L'URL
     ============================================================ */
 
-    // Exemple d'URL :
-    // /session/13/results
     const pathParts = window.location.pathname.split("/");
     const sessionId = pathParts[2];
 
@@ -48,26 +49,27 @@
     }
 
     /* ============================================================
-       3. VARIABLES GLOBALES DES GRAPHIQUES
+       3. RÉFÉRENCES DES GRAPHIQUES
     ============================================================ */
 
     let engagementChart = null;
-    let emotionChart = null;
+    let qcmEmotionChart = null;
+    let webcamEmotionChart = null;
 
     /* ============================================================
-       4. FONCTION DE CRÉATION / MISE À JOUR DU GRAPHIQUE COURBE
+       4. COURBE PRINCIPALE D'ENGAGEMENT
     ============================================================ */
 
     function renderEngagementChart(labels, values) {
-        const engagementCanvas = document.getElementById("engagementChart");
-        if (!engagementCanvas) return;
+        const canvas = document.getElementById("engagementChart");
+        if (!canvas) return;
 
-        // Si le graphique existe déjà, on le détruit avant recréation
+        // Si le graphique existe déjà, on le détruit
         if (engagementChart) {
             engagementChart.destroy();
         }
 
-        engagementChart = new Chart(engagementCanvas, {
+        engagementChart = new Chart(canvas, {
             type: "line",
             data: {
                 labels: labels,
@@ -138,25 +140,23 @@
     }
 
     /* ============================================================
-       5. FONCTION DE CRÉATION / MISE À JOUR DU GRAPHIQUE BARRES
+       5. DONUT DES ÉMOTIONS QCM
     ============================================================ */
 
-    function renderEmotionChart(labels, values) {
-        const emotionCanvas = document.getElementById("emotionChart");
-        if (!emotionCanvas) return;
+    function renderQcmEmotionChart(labels, values) {
+        const canvas = document.getElementById("qcmEmotionChart");
+        if (!canvas) return;
 
-        // Si le graphique existe déjà, on le détruit avant recréation
-        if (emotionChart) {
-            emotionChart.destroy();
+        if (qcmEmotionChart) {
+            qcmEmotionChart.destroy();
         }
 
-        emotionChart = new Chart(emotionCanvas, {
-            type: "bar",
+        qcmEmotionChart = new Chart(canvas, {
+            type: "doughnut",
             data: {
-                labels: labels.map(emotionLabelToEmoji),
+                labels: labels,
                 datasets: [
                     {
-                        label: "Nombre d'occurrences",
                         data: values,
                         backgroundColor: [
                             "rgba(34, 197, 94, 0.75)",
@@ -172,18 +172,20 @@
                             "rgba(236, 72, 153, 1)",
                             "rgba(239, 68, 68, 1)"
                         ],
-                        borderWidth: 1.5,
-                        borderRadius: 10
+                        borderWidth: 2
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: "58%",
                 plugins: {
                     legend: {
+                        position: "bottom",
                         labels: {
-                            color: "#e2e8f0"
+                            color: "#e2e8f0",
+                            padding: 18
                         }
                     },
                     tooltip: {
@@ -193,25 +195,70 @@
                         borderColor: "rgba(255,255,255,0.08)",
                         borderWidth: 1
                     }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            color: "#94a3b8"
-                        },
-                        grid: {
-                            display: false
+                }
+            }
+        });
+    }
+
+    /* ============================================================
+       6. DONUT DES ÉMOTIONS DEEPFACE
+    ============================================================ */
+
+    function renderWebcamEmotionChart(labels, values) {
+        const canvas = document.getElementById("webcamEmotionChart");
+        if (!canvas) return;
+
+        if (webcamEmotionChart) {
+            webcamEmotionChart.destroy();
+        }
+
+        webcamEmotionChart = new Chart(canvas, {
+            type: "doughnut",
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        data: values,
+                        backgroundColor: [
+                            "rgba(34, 197, 94, 0.75)",
+                            "rgba(148, 163, 184, 0.75)",
+                            "rgba(99, 102, 241, 0.75)",
+                            "rgba(245, 158, 11, 0.75)",
+                            "rgba(59, 130, 246, 0.75)",
+                            "rgba(239, 68, 68, 0.75)",
+                            "rgba(168, 85, 247, 0.75)"
+                        ],
+                        borderColor: [
+                            "rgba(34, 197, 94, 1)",
+                            "rgba(148, 163, 184, 1)",
+                            "rgba(99, 102, 241, 1)",
+                            "rgba(245, 158, 11, 1)",
+                            "rgba(59, 130, 246, 1)",
+                            "rgba(239, 68, 68, 1)",
+                            "rgba(168, 85, 247, 1)"
+                        ],
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "58%",
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: {
+                            color: "#e2e8f0",
+                            padding: 18
                         }
                     },
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            color: "#94a3b8",
-                            precision: 0
-                        },
-                        grid: {
-                            color: "rgba(255,255,255,0.06)"
-                        }
+                    tooltip: {
+                        backgroundColor: "rgba(15, 23, 42, 0.95)",
+                        titleColor: "#ffffff",
+                        bodyColor: "#e2e8f0",
+                        borderColor: "rgba(255,255,255,0.08)",
+                        borderWidth: 1
                     }
                 }
             }
@@ -219,16 +266,16 @@
     }
 
     /* ============================================================
-       6. MISE À JOUR DES CARTES DE STATS
+       7. MISE À JOUR DES CARTES STATS
     ============================================================ */
 
     function updateStatsCards(data) {
         const statValues = document.querySelectorAll(".stat-value");
 
-        // Ordre actuel dans le HTML :
+        // Ordre des cartes dans le HTML :
         // 0 = participants
-        // 1 = qcm_count
-        // 2 = webcam_count
+        // 1 = QCM
+        // 2 = webcam
         // 3 = statut
         if (statValues.length >= 4) {
             statValues[0].innerText = data.participants_count;
@@ -239,7 +286,7 @@
     }
 
     /* ============================================================
-       7. CHARGEMENT DES DONNÉES DEPUIS LA ROUTE JSON
+       8. RAFRAÎCHISSEMENT DES DONNÉES DEPUIS LE BACKEND
     ============================================================ */
 
     async function refreshResultsData() {
@@ -253,21 +300,25 @@
             const data = await response.json();
 
             if (!data.ok) {
-                console.warn("Réponse JSON invalide");
                 return;
             }
 
-            // Mise à jour des tableaux en mémoire
+            // Mise à jour des variables mémoire
             engagementLabels = data.engagement_labels || [];
             engagementValues = data.engagement_values || [];
-            emotionLabels = data.emotion_labels || [];
-            emotionValues = data.emotion_values || [];
 
-            // Mise à jour des graphiques
+            qcmEmotionLabels = data.qcm_emotion_labels || [];
+            qcmEmotionValues = data.qcm_emotion_values || [];
+
+            webcamEmotionLabels = data.webcam_emotion_labels || [];
+            webcamEmotionValues = data.webcam_emotion_values || [];
+
+            // Redessin des graphiques
             renderEngagementChart(engagementLabels, engagementValues);
-            renderEmotionChart(emotionLabels, emotionValues);
+            renderQcmEmotionChart(qcmEmotionLabels, qcmEmotionValues);
+            renderWebcamEmotionChart(webcamEmotionLabels, webcamEmotionValues);
 
-            // Mise à jour des cartes statistiques
+            // Mise à jour des cartes
             updateStatsCards(data);
 
         } catch (e) {
@@ -275,25 +326,14 @@
         }
     }
 
-    function emotionLabelToEmoji(label) {
-        const mapping = {
-            "motivé": "🙂",
-            "neutre": "😐",
-            "ennuyé": "😴",
-            "stressé": "😰",
-            "démotivé": "😞"
-        };
-    
-        return mapping[label] || label;
-    }
-
     /* ============================================================
-       8. INITIALISATION
+       9. INITIALISATION
     ============================================================ */
 
-    // Premier affichage immédiat avec les données injectées par Flask
+    // Premier rendu immédiat
     renderEngagementChart(engagementLabels, engagementValues);
-    renderEmotionChart(emotionLabels, emotionValues);
+    renderQcmEmotionChart(qcmEmotionLabels, qcmEmotionValues);
+    renderWebcamEmotionChart(webcamEmotionLabels, webcamEmotionValues);
 
     // Rafraîchissement automatique toutes les 10 secondes
     setInterval(refreshResultsData, 10000);
