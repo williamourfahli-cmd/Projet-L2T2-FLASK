@@ -21,7 +21,7 @@
             <h1>Résultats de la session</h1>
             <p>
                 Code : <strong>{{ session_obj.code_session }}</strong>
-                · Mode : <strong>{{ mode }}</strong>
+                · Modes : <strong>{{ selected_modes | join(", ") }}</strong>
             </p>
         </div>
 
@@ -67,7 +67,7 @@
     </div>
 
     <!-- ================= CONTENU MODE COURBE ================= -->
-    {% if mode in ["courbe", "courbes"] %}
+    {% if "courbes" in selected_modes %}
 
     <!--
         Ce bloc stocke les données JSON envoyées par Flask.
@@ -138,7 +138,8 @@
         </div>
     </div>
 
-    {% else %}
+    {% endif %}
+    
     <!-- Message de secours si autre mode -->
     <section class="card">
         <h2>Mode non encore implémenté</h2>
@@ -148,8 +149,21 @@
         </p>
     </section>
     {% endif %}
+    
+    {% if "moyennes" in selected_modes %}
+    <section class="card">
+         <h2>Mode moyennes</h2>
+         <p>Ce mode sera ajouté prochainement.</p>
+    </section>
+    {% endif %}
 
-</div>
+    {% if "alertes" in selected_modes %}
+    <section class="card">
+        <h2>Mode alertes</h2>
+        <p>Ce mode sera ajouté prochainement.</p>
+    </section>
+    {% endif %}
+    
 
 <!-- Librairie de graphiques -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
