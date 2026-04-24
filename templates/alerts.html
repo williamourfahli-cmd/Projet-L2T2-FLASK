@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Historique des alertes{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/alerts.css') }}">
+{% endblock %}
+
+{% block body %}
+
+<div class="container">
+
+    <!-- ================= EN-TÊTE ================= -->
+    <div class="topbar">
+        <div>
+            <h1>Historique des alertes</h1>
+            <p>
+                Session <strong>{{ session_obj.code_session }}</strong>
+                · {{ alerts | length }} alerte{{ 's' if alerts | length > 1 else '' }}
+            </p>
+        </div>
+
+        <div class="results-actions">
+            <a href="{{ url_for('session_results', session_id=session_obj.id) }}" class="btn secondary">
+                Retour aux résultats
+            </a>
+        </div>
+    </div>
+
+    <!-- ================= FILTRES ================= -->
+    <div class="card">
+        <div class="filters">
+            <span style="color: var(--muted); font-size: 0.85rem; margin-right: 4px;">Filtrer :</span>
+
+            <button class="filter-btn active" data-filter="all">Toutes</button>
+            <button class="filter-btn" data-filter="level-individual">Individuelles</button>
+            <button class="filter-btn" data-filter="level-class">Classe</button>
+            <button class="filter-btn" data-filter="source-qcm">QCM</button>
+            <button class="filter-btn" data-filter="source-webcam">Webcam</button>
+        </div>
+    </div>
+
+    <!-- ================= LISTE DES ALERTES ================= -->
+    {% if alerts %}
+
+    <div class="alerts-list" id="alertsList">
+
+        {% for alert in alerts %}
+        <div
+            class="alert-item"
+            data-level="{{ alert.level }}"
+            data-source="{{ alert.source }}"
+        >
+            <!-- Point coloré -->
+            <div class="alert-dot {{ alert.level }}"></div>
+
+            <!-- Contenu -->
+            <div class="alert-body">
+                <div class="alert-meta">
+                    <!-- Tag niveau -->
+                    <span class="alert-level-tag {{ alert.level }}">
+                        {% if alert.level == "individual" %}
+                            Individuelle
+                        {% else %}
+                            Classe
+                        {% endif %}
+                    </span>
+
+                    <!-- Tag source -->
+                    <span class="alert-source-tag">
+                        {% if alert.source == "qcm" %}
+                            QCM
+                        {% elif alert.source == "webcam" %}
+                            Webcam
+                        {% elif alert.source == "class_snapshot" %}
+                            Snapshot QCM
+                        {% elif alert.source == "class_accumulation" %}
+                            Accumulation
+                        {% else %}
+                            {{ alert.source }}
+                        {% endif %}
+                    </span>
+                </div>
+
+                <!-- Nom de l'étudiant -->
+                <div class="alert-name">
+                    {% if alert.level == "individual" %}
+                        {% if alert.first_name %}
+                            {{ alert.first_name }} {{ alert.last_name }}
+                        {% else %}
+                            Étudiant anonyme
+                        {% endif %}
+                    {% else %}
+                        Toute la classe
+                    {% endif %}
+                </div>
+
+                <!-- Détail émotion + ratio -->
+                <div class="alert-detail">
+                    {% if alert.emotion %}
+                        Émotion : <strong>{{ alert.emotion }}</strong>
+                        {% if alert.ratio is not none %}
+                            · {{ (alert.ratio * 100) | round | int }}% des mesures
+                        {% endif %}
+                    {% elif alert.ratio is not none %}
+                        Ratio : {{ (alert.ratio * 100) | round | int }}%
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Heure -->
+            <div class="alert-time">
+                {{ alert.triggered_at | heure_fr }}
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+
+    {% else %}
+
+    <!-- État vide -->
+    <div class="card empty-state">
+        <div class="empty-state-icon">✅</div>
+        <h2>Aucune alerte enregistrée</h2>
+        <p>Aucun seuil d'alerte n'a été atteint pendant cette session.</p>
+    </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/alerts.js') }}"></script>
+{% endblock %}
