@@ -685,6 +685,28 @@ input:checked + .slider:before {
     }
 }
 
+/* checkboxes professor dashboard */
+
+.mode-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.mode-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.mode-checkboxes input[type="checkbox"] {
+    width: auto;
+    transform: scale(1.15);
+}
+
 /* Logo Emotrack */
 
 .logo-container {
