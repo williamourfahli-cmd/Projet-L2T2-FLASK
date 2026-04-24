@@ -721,3 +721,146 @@ input:checked + .slider:before {
     height: auto;
     border-radius: 5px; /* Optionnel : adoucit un peu les bords de l'image */
 }
+
+
+
+/*==================================================*/
+/* STYLE DES ALERTES */
+/*==================================================*/
+/* ===== FILTRES ===== */
+.filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-btn {
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: 0.2s;
+}
+
+.filter-btn:hover {
+    border-color: rgba(124,58,237,0.4);
+    color: var(--text);
+}
+
+.filter-btn.active {
+    background: rgba(124,58,237,0.2);
+    border-color: rgba(124,58,237,0.6);
+    color: var(--text);
+}
+
+/* ===== LISTE ALERTES ===== */
+.alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.03);
+    transition: 0.2s;
+}
+
+.alert-item:hover {
+    border-color: rgba(239,68,68,0.2);
+}
+
+/* Indicateur coloré selon le niveau */
+.alert-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+}
+
+.alert-dot.individual {
+    background: #f97316;
+    box-shadow: 0 0 6px rgba(249,115,22,0.5);
+}
+
+.alert-dot.class {
+    background: #ef4444;
+    box-shadow: 0 0 6px rgba(239,68,68,0.5);
+}
+
+.alert-body {
+    flex: 1;
+}
+
+.alert-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.alert-level-tag {
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.alert-level-tag.individual {
+    background: rgba(249,115,22,0.15);
+    color: #fdba74;
+}
+
+.alert-level-tag.class {
+    background: rgba(239,68,68,0.15);
+    color: #fca5a5;
+}
+
+.alert-source-tag {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.06);
+    color: var(--muted);
+}
+
+.alert-name {
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.alert-detail {
+    color: var(--muted);
+    font-size: 0.83rem;
+    margin-top: 2px;
+}
+
+.alert-time {
+    color: var(--muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    margin-top: 2px;
+}
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+/*===============================================*/
