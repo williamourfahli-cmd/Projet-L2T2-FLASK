@@ -758,6 +758,7 @@ def create_session():
     Création d'une session par un professeur.
 
     - Valide les données
+    - Récupère plusieurs modes d'affichage
     - Génère un code unique
     - Sauvegarde en base
     """
@@ -767,18 +768,25 @@ def create_session():
 
     freq_q = int(request.form["freq_questionnaire"])
     freq_w = int(request.form["freq_webcam"])
-    mode = request.form["mode_affichage"]
+    selected_modes = request.form.getlist("modes_affichage")
 
     if freq_q <= 0 or freq_w <= 0:
         flash("Valeurs invalides.", "error")
         return redirect(url_for("professor_dashboard"))
+
+    if not selected_modes:
+        flash("Veuillez sélectionner au moins un mode d'affichage.", "error")
+        return redirect(url_for("professor_dashboard"))
+
+    # Exemple de résultat : "courbes,moyennes"
+    mode = ",".join(selected_modes)
 
     code = generate_session_code()
 
     new_session = Session(
         code_session=code,
         professor_id=session["user_id"],
-        date_debut = datetime.now(timezone.utc),
+        date_debut=datetime.now(timezone.utc),
         frequence_questionnaire=freq_q,
         frequence_webcam=freq_w,
         mode_affichage=mode
@@ -1387,7 +1395,8 @@ def session_results(session_id):
     ).count()
 
     # Mode d'affichage choisi à la création
-    mode = (session_obj.mode_affichage or "").strip().lower()
+    raw_modes = (session_obj.mode_affichage or "").strip().lower()
+    selected_modes = [m.strip() for m in raw_modes.split(",") if m.strip()]
 
     # Données des graphiques
     curve_data = build_session_curve_data(session_id)
@@ -1395,7 +1404,7 @@ def session_results(session_id):
     return render_template(
         "result.html",
         session_obj=session_obj,
-        mode=mode,
+        selected_modes=selected_modes,
         participants_count=participants_count,
         engagement_labels=curve_data["engagement_labels"],
         engagement_values=curve_data["engagement_values"],
@@ -1453,6 +1462,9 @@ def session_results_data(session_id):
         )
     ).count()
 
+    raw_modes = (session_obj.mode_affichage or "").strip().lower()
+    selected_modes = [m.strip() for m in raw_modes.split(",") if m.strip()]
+
     # Données graphiques
     curve_data = build_session_curve_data(session_id)
 
@@ -1462,7 +1474,7 @@ def session_results_data(session_id):
         "active_participants_count": active_participants_count,
         "qcm_count": curve_data["qcm_count"],
         "webcam_count": curve_data["webcam_count"],
-        "session_is_active": session_obj.is_active,
+        "selected_modes": selected_modes,
         "engagement_labels": curve_data["engagement_labels"],
         "engagement_values": curve_data["engagement_values"],
         "qcm_emotion_labels": curve_data["qcm_emotion_labels"],
