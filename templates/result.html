@@ -61,14 +61,8 @@
         </div>
 
         <div class="card stat-card">
-            <span class="stat-label">Statut</span>
-            <span class="stat-value">
-                {% if session_obj.is_active %}
-                    En cours
-                {% else %}
-                    Terminée
-                {% endif %}
-            </span>
+            <span class="stat-label">Participants actifs</span>
+            <span class="stat-value">{{ active_participants_count }}</span>
         </div>
     </div>
 
