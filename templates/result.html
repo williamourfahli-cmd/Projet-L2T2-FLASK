@@ -11,9 +11,24 @@
     - une courbe principale d'engagement général
     - un donut pour les émotions QCM
     - un donut pour les émotions DeepFace
+    - les alertes en cas d'état émotionel collectif ou individuel "critique"
 -->
 
 <div class="container results-page">
+        <!-- ================= BANNIÈRE ALERTE DE CLASSE ================= -->
+    <!--
+        Visible uniquement si une alerte de classe est active.
+        Masquée automatiquement par result.js si la condition disparaît.
+    
+    <div id="class-alert-banner" class="alert-banner" style="display:none;">
+        <div class="alert-banner-content">
+            <span class="alert-banner-icon">⚠️</span>
+            <div>
+                <strong>Alerte de classe</strong>
+                <span id="class-alert-reason"></span>
+            </div>
+        </div>
+    </div> -->
 
     <!-- ================= EN-TÊTE ================= -->
     <div class="topbar">
@@ -42,7 +57,7 @@
         </div>
     </div>
 
-    <!-- ================= CARTES RÉCAP ================= -->
+    <!-- ================= CARTES RÉCAPITULATIVES ================= -->
     <div class="grid results-summary">
 
         <div class="card stat-card">
@@ -157,6 +172,17 @@
     {% endif %}
 
 </div>
+
+<!-- ================= POPUP CONTAINER POUR LES ALERTES  ================= -->
+<!--
+    Les popups d'alerte individuelle s'empilent ici.
+    Injectées dynamiquement par result.js.
+
+<div id="alert-popups-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/result.js') }}"></script> -->
+
 
 <!-- Librairie de graphiques -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
