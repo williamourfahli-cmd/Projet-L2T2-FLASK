@@ -1442,12 +1442,24 @@ def session_results_data(session_id):
         session_id=session_id
     ).count()
 
+    # Comptage des participants encore actifs
+    active_participants_count = Participation.query.filter(
+        Participation.session_id == session_id,
+        ~Participation.student_id.in_(
+            db.session.query(QCMResponse.user_id).filter(
+                QCMResponse.session_id == session_id,
+                QCMResponse.phase == "apres"
+            )
+        )
+    ).count()
+
     # Données graphiques
     curve_data = build_session_curve_data(session_id)
 
     return jsonify({
         "ok": True,
         "participants_count": participants_count,
+        "active_participants_count": active_participants_count,
         "qcm_count": curve_data["qcm_count"],
         "webcam_count": curve_data["webcam_count"],
         "session_is_active": session_obj.is_active,
