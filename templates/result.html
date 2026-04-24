@@ -4,21 +4,18 @@
 {% block body %}
 
 <!--
-    Page de résultats d'une session professeur.
+    Page résultats professeur.
 
-    Cette page affiche :
-    - les informations générales de la session
-    - quelques statistiques globales
-    - un graphique de courbe pour l'engagement général
-    - un graphique en bâtons pour la répartition émotionnelle
-
-    Le contenu des graphiques est injecté par Flask
-    puis lu par le fichier JS result.js
+    Cette page contient :
+    - un résumé de la session
+    - une courbe principale d'engagement général
+    - un donut pour les émotions QCM
+    - un donut pour les émotions DeepFace
 -->
 
 <div class="container results-page">
 
-    <!-- ================= EN-TÊTE DE PAGE ================= -->
+    <!-- ================= EN-TÊTE ================= -->
     <div class="topbar">
         <div>
             <h1>Résultats de la session</h1>
@@ -28,15 +25,13 @@
             </p>
         </div>
 
-        <!-- Actions disponibles pour le professeur -->
         <div class="results-actions">
-
-            <!-- Retour au dashboard professeur -->
+            <!-- Retour dashboard -->
             <a href="{{ url_for('professor_dashboard') }}" class="btn secondary">
                 Retour dashboard
             </a>
 
-            <!-- Bouton de fermeture de session si elle est encore active -->
+            <!-- Fermeture session si encore active -->
             {% if session_obj.is_active %}
             <form action="{{ url_for('end_session', session_id=session_obj.id) }}" method="POST">
                 <button type="submit" class="btn danger">
@@ -47,28 +42,24 @@
         </div>
     </div>
 
-    <!-- ================= CARTES RÉCAPITULATIVES ================= -->
+    <!-- ================= CARTES RÉCAP ================= -->
     <div class="grid results-summary">
 
-        <!-- Nombre d'étudiants ayant rejoint la session -->
         <div class="card stat-card">
             <span class="stat-label">Participants</span>
             <span class="stat-value">{{ participants_count }}</span>
         </div>
 
-        <!-- Nombre total de réponses QCM -->
         <div class="card stat-card">
             <span class="stat-label">Réponses QCM</span>
             <span class="stat-value">{{ qcm_count }}</span>
         </div>
 
-        <!-- Nombre total d'analyses webcam -->
         <div class="card stat-card">
             <span class="stat-label">Analyses webcam</span>
             <span class="stat-value">{{ webcam_count }}</span>
         </div>
 
-        <!-- Statut courant de la session -->
         <div class="card stat-card">
             <span class="stat-label">Statut</span>
             <span class="stat-value">
@@ -81,24 +72,26 @@
         </div>
     </div>
 
-    <!-- ================= AFFICHAGE SPÉCIFIQUE AU MODE ================= -->
+    <!-- ================= CONTENU MODE COURBE ================= -->
     {% if mode in ["courbe", "courbes"] %}
 
     <!--
-        Bloc caché contenant les données sérialisées en JSON.
-        Le fichier result.js les lit ensuite pour construire les graphiques.
+        Ce bloc stocke les données JSON envoyées par Flask.
+        Le JavaScript les lit ensuite pour construire les graphiques.
     -->
     <div
         id="resultsPageData"
         data-engagement-labels='{{ engagement_labels | tojson | safe }}'
         data-engagement-values='{{ engagement_values | tojson | safe }}'
-        data-emotion-labels='{{ emotion_labels | tojson | safe }}'
-        data-emotion-values='{{ emotion_values | tojson | safe }}'
+        data-qcm-emotion-labels='{{ qcm_emotion_labels | tojson | safe }}'
+        data-qcm-emotion-values='{{ qcm_emotion_values | tojson | safe }}'
+        data-webcam-emotion-labels='{{ webcam_emotion_labels | tojson | safe }}'
+        data-webcam-emotion-values='{{ webcam_emotion_values | tojson | safe }}'
     ></div>
 
     <div class="results-grid">
 
-        <!-- ================= GRAPHIQUE COURBE ================= -->
+        <!-- ================= COURBE PRINCIPALE ================= -->
         <section class="card chart-card large">
             <div class="chart-header">
                 <div>
@@ -110,33 +103,49 @@
                 </div>
             </div>
 
-            <!-- Canvas utilisé par Chart.js pour dessiner la courbe -->
             <div class="chart-wrapper tall">
                 <canvas id="engagementChart"></canvas>
             </div>
         </section>
 
-        <!-- ================= GRAPHIQUE BARRES ================= -->
-        <section class="card chart-card">
-            <div class="chart-header">
-                <div>
-                    <h2>Répartition émotionnelle</h2>
-                    <p>
-                        Répartition globale des émotions observées pendant la session.
-                    </p>
+        <!-- ================= DEUX DONUTS ================= -->
+        <div class="results-grid-two">
+
+            <section class="card chart-card">
+                <div class="chart-header">
+                    <div>
+                        <h2>Émotions QCM</h2>
+                        <p>
+                            Répartition des émotions déclarées dans les questionnaires.
+                        </p>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Canvas utilisé par Chart.js pour dessiner l'histogramme -->
-            <div class="chart-wrapper">
-                <canvas id="emotionChart"></canvas>
-            </div>
-        </section>
+                <div class="chart-wrapper donut">
+                    <canvas id="qcmEmotionChart"></canvas>
+                </div>
+            </section>
 
+            <section class="card chart-card">
+                <div class="chart-header">
+                    <div>
+                        <h2>Émotions DeepFace</h2>
+                        <p>
+                            Répartition des émotions détectées par l’analyse faciale.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="chart-wrapper donut">
+                    <canvas id="webcamEmotionChart"></canvas>
+                </div>
+            </section>
+
+        </div>
     </div>
 
     {% else %}
-    <!-- Message de secours si le mode n'est pas encore développé -->
+    <!-- Message de secours si autre mode -->
     <section class="card">
         <h2>Mode non encore implémenté</h2>
         <p>
@@ -148,10 +157,10 @@
 
 </div>
 
-<!-- Librairie Chart.js utilisée pour générer les graphiques -->
+<!-- Librairie de graphiques -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- Script spécifique à la page résultats -->
+<!-- Script spécifique de la page résultats -->
 <script src="{{ url_for('static', filename='js/result.js') }}"></script>
 
 {% endblock %}
