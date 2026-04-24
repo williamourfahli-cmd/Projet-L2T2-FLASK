@@ -1389,10 +1389,22 @@ def session_results(session_id):
         flash("Accès non autorisé à cette session.", "error")
         return redirect(url_for("professor_dashboard"))
 
-    # Nombre de participants
+    # Nombre de participants ayant rejoint la session 
     participants_count = Participation.query.filter_by(
         session_id=session_id
     ).count()
+
+    # Calcul des participants actifs 
+    active_participants_count = Participation.query.filter(
+        Participation.session_id == session_id,
+        ~Participation.student_id.in_(
+            db.session.query(QCMResponse.user_id).filter(
+                QCMResponse.session_id == session_id,
+                QCMResponse.phase == "apres"
+            )
+        )
+    ).count()
+    
 
     # Mode d'affichage choisi à la création
     raw_modes = (session_obj.mode_affichage or "").strip().lower()
@@ -1406,6 +1418,7 @@ def session_results(session_id):
         session_obj=session_obj,
         selected_modes=selected_modes,
         participants_count=participants_count,
+        active_participants_count=active_participants_count,
         engagement_labels=curve_data["engagement_labels"],
         engagement_values=curve_data["engagement_values"],
         qcm_emotion_labels=curve_data["qcm_emotion_labels"],
@@ -1446,10 +1459,22 @@ def session_results_data(session_id):
     if session_obj.professor_id != session.get("user_id"):
         return jsonify({"error": "Accès non autorisé"}), 403
 
-    # Nombre de participants
+    # Nombre de participants ayant rejoint la session
     participants_count = Participation.query.filter_by(
         session_id=session_id
     ).count()
+
+    # Participants actifs
+    active_participants_count = Participation.query.filter(
+        Participation.session_id == session_id,
+        ~Participation.student_id.in_(
+            db.session.query(QCMResponse.user_id).filter(
+                QCMResponse.session_id == session_id,
+                QCMResponse.phase == "apres"
+            )
+        )
+    ).count()
+   
 
     # Comptage des participants encore actifs
     active_participants_count = Participation.query.filter(
@@ -1471,6 +1496,7 @@ def session_results_data(session_id):
     return jsonify({
         "ok": True,
         "participants_count": participants_count,
+        "active_participants_count": active_participants_count,
         "active_participants_count": active_participants_count,
         "qcm_count": curve_data["qcm_count"],
         "webcam_count": curve_data["webcam_count"],
