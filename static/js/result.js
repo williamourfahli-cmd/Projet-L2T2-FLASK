@@ -47,9 +47,19 @@
         console.warn("Session ID introuvable dans l'URL");
         return;
     }
+    /* ============================================================
+       3. DÉTECTION DES MODES ACTIFS
+    ============================================================ */
+
+    // On détecte si le mode alertes est actif côté DOM
+    // plutôt que de le lire depuis Flask pour éviter le couplage
+    const alertBanner   = document.getElementById("class-alert-banner");
+    const popupContainer = document.getElementById("alert-popups-container");
+    const alertModeActive = !!alertBanner;
+    
 
     /* ============================================================
-       3. RÉFÉRENCES DES GRAPHIQUES
+       4. RÉFÉRENCES DES GRAPHIQUES
     ============================================================ */
 
     let engagementChart = null;
@@ -57,7 +67,16 @@
     let webcamEmotionChart = null;
 
     /* ============================================================
-       4. COURBE PRINCIPALE D'ENGAGEMENT
+       5. MÉMOIRE DES ALERTES INDIVIDUELLES DÉJÀ AFFICHÉES
+       Clé : "<user_id>_<source>_<emotion>"
+       Réinitialisée si l'étudiant repasse sous le seuil
+    ============================================================ */
+
+    const shownAlerts = new Set();
+
+    
+    /* ============================================================
+       6. COURBE PRINCIPALE D'ENGAGEMENT
     ============================================================ */
 
     function renderEngagementChart(labels, values) {
@@ -140,7 +159,7 @@
     }
 
     /* ============================================================
-       5. DONUT DES ÉMOTIONS QCM
+       7. DONUT DES ÉMOTIONS QCM
     ============================================================ */
 
     function renderQcmEmotionChart(labels, values) {
@@ -201,7 +220,7 @@
     }
 
     /* ============================================================
-       6. DONUT DES ÉMOTIONS DEEPFACE
+       8. DONUT DES ÉMOTIONS DEEPFACE
     ============================================================ */
 
     function renderWebcamEmotionChart(labels, values) {
@@ -266,7 +285,7 @@
     }
 
     /* ============================================================
-       7. MISE À JOUR DES CARTES STATS
+       9. MISE À JOUR DES CARTES STATS
     ============================================================ */
 
    function updateStatsCards(data) {
@@ -283,7 +302,7 @@
     if (aCount) aCount.innerText = data.active_participants_count || 0;
 }
     /* ============================================================
-       8. RAFRAÎCHISSEMENT DES DONNÉES DEPUIS LE BACKEND
+       10. RAFRAÎCHISSEMENT DES DONNÉES DEPUIS LE BACKEND
     ============================================================ */
 
     async function refreshResultsData() {
@@ -324,7 +343,7 @@
     }
 
     /* ============================================================
-       9. BANNIÈRE ALERTE DE CLASSE
+       11. BANNIÈRE ALERTE DE CLASSE
     ============================================================ */
 
     function updateClassAlertBanner(alertsData) {
@@ -351,7 +370,7 @@
     }
 
     /* ============================================================
-       10. POPUP ALERTE INDIVIDUELLE
+       12. POPUP ALERTE INDIVIDUELLE
     ============================================================ */
 
     function showIndividualAlertPopup(alertInfo) {
@@ -429,50 +448,9 @@
         }
     }
 
-    /* ============================================================
-       11. RAFRAÎCHISSEMENT TOUTES LES 10 SECONDES
-    ============================================================ */
-
-    async function refreshResultsData() {
-        try {
-            const response = await fetch(`/session/${sessionId}/results/data`);
-            if (!response.ok) throw new Error("Erreur chargement");
-
-            const data = await response.json();
-            if (!data.ok) return;
-
-            // Mise à jour graphiques (mode courbes)
-            if (dataEl) {
-                engagementLabels    = data.engagement_labels    || [];
-                engagementValues    = data.engagement_values    || [];
-                qcmEmotionLabels    = data.qcm_emotion_labels   || [];
-                qcmEmotionValues    = data.qcm_emotion_values   || [];
-                webcamEmotionLabels = data.webcam_emotion_labels || [];
-                webcamEmotionValues = data.webcam_emotion_values || [];
-
-                renderEngagementChart(engagementLabels, engagementValues);
-                renderQcmEmotionChart(qcmEmotionLabels, qcmEmotionValues);
-                renderWebcamEmotionChart(webcamEmotionLabels, webcamEmotionValues);
-            }
-
-            // Mise à jour cartes stats
-            updateStatsCards(data);
-
-            // Mise à jour alertes (mode alertes uniquement)
-            if (alertModeActive && data.alerts) {
-                updateClassAlertBanner(data.alerts);
-                processIndividualAlerts(data.alerts);
-            }
-
-        } catch (e) {
-            console.warn("Impossible de rafraîchir les résultats", e);
-        }
-    }
-
-    
 
     /* ============================================================
-       12. INITIALISATION
+       13. INITIALISATION
     ============================================================ */
 
     // Premier rendu immédiat
