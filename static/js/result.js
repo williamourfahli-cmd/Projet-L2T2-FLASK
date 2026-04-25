@@ -349,7 +349,7 @@
     }
 
     /* ============================================================
-       11. BANNIÈRE ALERTE DE CLASSE
+       11a. BANNIÈRE ALERTE DE CLASSE
     ============================================================ */
 
     function updateClassAlertBanner(alertsData) {
@@ -373,6 +373,91 @@
             // Condition non remplie : masquage automatique
             alertBanner.style.display = "none";
         }
+    }
+
+    /* ============================================================
+       11b. MISE À JOUR DES MOYENNES ÉMOTIONNELLES
+    
+       Met à jour l'encadré des 3 phrases et le tableau individuel.
+       Ne fait rien si la section #moyennes-section est absente du DOM
+       (= mode moyennes non sélectionné par le prof).
+       Appelée automatiquement à chaque cycle de 10 secondes.
+    ============================================================ */
+    
+    function updateMoyennes(data) {
+    
+        // Si le mode moyennes n'est pas actif → section absente → on sort
+        const section = document.getElementById("moyennes-section");
+        if (!section) return;
+    
+        // ── Mise à jour des 3 phrases de moyenne globale ──────────
+    
+        const subjEl = document.getElementById("avg-subjective");
+        const objEl  = document.getElementById("avg-objective");
+        const genEl  = document.getElementById("avg-general");
+    
+        // On affiche "Aucune donnée" si le backend n'a rien à retourner
+        if (subjEl) subjEl.innerText = data.moyenne_subjective || "Aucune donnée";
+        if (objEl)  objEl.innerText  = data.moyenne_objective  || "Aucune donnée";
+        if (genEl)  genEl.innerText  = data.moyenne_generale   || "Aucune donnée";
+    
+        // ── Mise à jour du tableau individuel ─────────────────────
+    
+        const tbody      = document.getElementById("tbody-individuals");
+        if (!tbody) return;
+    
+        const individuals = data.individuals || [];
+    
+        if (individuals.length === 0) {
+            // Aucun étudiant → ligne vide
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" style="padding:16px; color:var(--muted); text-align:center;">
+                        Aucun étudiant connecté
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+    
+        // Génération d'une ligne par étudiant
+        tbody.innerHTML = individuals.map(s => `
+            <tr style="border-bottom:1px solid var(--border);">
+    
+                <!-- Badge nom ou anonyme, avec couleur selon le statut -->
+                <td style="padding:10px 12px;">
+                    <span style="
+                        padding:3px 10px;
+                        border-radius:20px;
+                        font-size:0.8rem;
+                        background:${s.anonymous
+                            ? "rgba(255,255,255,0.05)"   /* gris neutre pour anonyme */
+                            : "rgba(79,70,229,0.2)"};    /* violet pour identifié */
+                        border:1px solid ${s.anonymous
+                            ? "rgba(255,255,255,0.1)"
+                            : "rgba(79,70,229,0.4)"};
+                    ">
+                        ${s.anonymous ? "Anonyme" : "👤 " + s.name}
+                    </span>
+                </td>
+    
+                <!-- Émotion dominante toutes sources (QCM + DeepFace) -->
+                <td style="padding:10px 12px; color:#a78bfa; font-weight:bold;">
+                    ${s.emotion_dominante}
+                </td>
+    
+                <!-- Nombre de réponses QCM soumises -->
+                <td style="padding:10px 12px; color:var(--muted);">
+                    ${s.nb_qcm} réponse${s.nb_qcm > 1 ? "s" : ""}
+                </td>
+    
+                <!-- Nombre d'analyses DeepFace réalisées -->
+                <td style="padding:10px 12px; color:var(--muted);">
+                    ${s.nb_webcam} analyse${s.nb_webcam > 1 ? "s" : ""}
+                </td>
+    
+            </tr>
+        `).join("");
     }
 
     /* ============================================================
