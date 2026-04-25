@@ -345,3 +345,49 @@ class WebcamAnalysis(db.Model):
         default=lambda: datetime.now(timezone.utc),
         nullable=False
     )
+    
+# ============================================================
+# TABLE ALERTS                                                 
+# ============================================================
+class Alert(db.Model):
+    """
+    Stocke chaque alerte déclenchée pendant une session.
+
+    level  : "individual" ou "class"
+    source : "qcm"                 → alerte individuelle QCM
+             "webcam"              → alerte individuelle DeepFace
+             "class_snapshot"      → alerte de classe snapshot QCM
+             "class_accumulation"  → alerte de classe accumulation individuelle
+    """
+
+    __tablename__ = 'alerts'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Session concernée
+    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
+
+    # Étudiant concerné — NULL pour les alertes de classe
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    # "individual" ou "class"
+    level = db.Column(db.String(20), nullable=False)
+
+    # "qcm", "webcam", "class_snapshot", "class_accumulation"
+    source = db.Column(db.String(30), nullable=False)
+
+    # Émotion dominante ayant déclenché l'alerte
+    emotion = db.Column(db.String(50), nullable=True)
+
+    # Ratio mesuré au déclenchement (ex: 0.65 = 65%)
+    ratio = db.Column(db.Float, nullable=True)
+
+    # Date de déclenchement UTC
+    triggered_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+
+    session = db.relationship('Session', backref='alerts', lazy=True)
+    user = db.relationship('User', backref='alerts', lazy=True)
