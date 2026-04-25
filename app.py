@@ -10,7 +10,7 @@ from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
-from models import db, User, Session, Participation, UserRole, QCMResponse, WebcamAnalysis
+from models import db, User, Session, Participation, UserRole, QCMResponse, WebcamAnalysis, Alert
 import base64
 import numpy as np
 #import cv2
