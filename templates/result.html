@@ -158,16 +158,8 @@
 
     {% endif %}
 
-    <!-- ================= MODE MOYENNES ================= -->
-    {% if "moyennes" in selected_modes %}
-    <section class="card">
-        <h2>Mode moyennes</h2>
-        <p>Ce mode sera ajouté prochainement.</p>
-    </section>
-    {% endif %}
-
     <!-- ================= MODE ALERTES ================= -->
-   {% if "alertes" in selected_modes %}
+    {% if "alertes" in selected_modes %}
     <section class="card">
         <div class="chart-header">
             <div>
@@ -203,9 +195,81 @@
 
     <!-- ================= MODE MOYENNES ================= -->
     {% if "moyennes" in selected_modes %}
-    <section class="card">
-        <h2>Mode moyennes</h2>
-        <p>Ce mode sera ajouté prochainement.</p>
+    <section class="card" id="moyennes-section">
+    
+        <div class="chart-header">
+            <div>
+                <h2>Mode moyennes</h2>
+                <p>
+                    Synthèse émotionnelle de la session,
+                    mise à jour automatiquement toutes les 10 secondes.
+                </p>
+            </div>
+        </div>
+    
+        <!--
+            ENCADRÉ MOYENNE GÉNÉRALE
+            Dégradé violet/bleu reprenant les tons de l'app (cf. base.css --primary / --secondary).
+            Les trois <span> sont remplis dynamiquement par result.js via updateMoyennes().
+        -->
+        <div style="
+            margin-top: 16px;
+            padding: 20px 24px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(79,70,229,0.25), rgba(147,51,234,0.25));
+            border: 1px solid rgba(124,58,237,0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        ">
+            <!-- Mesure subjective : émotions issues des QCM uniquement -->
+            <p style="margin:0; font-size:0.95rem;">
+                L'état émotionnel moyen de la mesure <strong>subjective</strong> est :
+                <span id="avg-subjective" style="color:#a78bfa; font-weight:bold;">…</span>
+            </p>
+    
+            <!-- Mesure objective : émotions issues de DeepFace uniquement -->
+            <p style="margin:0; font-size:0.95rem;">
+                L'état émotionnel moyen de la mesure <strong>objective</strong> est :
+                <span id="avg-objective" style="color:#a78bfa; font-weight:bold;">…</span>
+            </p>
+    
+            <!-- Mesure générale : combinaison QCM + DeepFace via catégories communes -->
+            <p style="margin:0; font-size:0.95rem;">
+                L'état émotionnel <strong>général</strong> est :
+                <span id="avg-general" style="color:#ec4899; font-weight:bold; font-size:1.05rem;">…</span>
+            </p>
+        </div>
+    
+        <!--
+            TABLEAU INDIVIDUEL
+            Une ligne par étudiant (anonyme ou non).
+            Rempli dynamiquement par result.js via updateMoyennes().
+        -->
+        <div style="margin-top: 24px; overflow-x: auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+    
+                <thead>
+                    <tr style="color:var(--muted); text-align:left; border-bottom:1px solid var(--border);">
+                        <th style="padding:8px 12px;">Étudiant</th>
+                        <th style="padding:8px 12px;">Émotion dominante</th>
+                        <th style="padding:8px 12px;">Réponses QCM</th>
+                        <th style="padding:8px 12px;">Analyses webcam</th>
+                    </tr>
+                </thead>
+    
+                <!-- Corps rempli dynamiquement par JS -->
+                <tbody id="tbody-individuals">
+                    <tr>
+                        <td colspan="4" style="padding:16px; color:var(--muted); text-align:center;">
+                            Chargement…
+                        </td>
+                    </tr>
+                </tbody>
+    
+            </table>
+        </div>
+    
     </section>
     {% endif %}
 
