@@ -324,7 +324,155 @@
     }
 
     /* ============================================================
-       9. INITIALISATION
+       9. BANNIÈRE ALERTE DE CLASSE
+    ============================================================ */
+
+    function updateClassAlertBanner(alertsData) {
+        if (!alertBanner) return;
+
+        if (alertsData && alertsData.class_alert) {
+            const reasonEl = document.getElementById("class-alert-reason");
+            if (reasonEl) {
+                const sources = alertsData.class_sources || [];
+                const reasons = [];
+                if (sources.includes("class_snapshot")) {
+                    reasons.push("plus de 50% de la classe démotivée au dernier QCM");
+                }
+                if (sources.includes("class_accumulation")) {
+                    reasons.push("plus de 40% des étudiants en alerte individuelle");
+                }
+                reasonEl.innerText = reasons.length ? " — " + reasons.join(" et ") : "";
+            }
+            alertBanner.style.display = "block";
+        } else {
+            // Condition non remplie : masquage automatique
+            alertBanner.style.display = "none";
+        }
+    }
+
+    /* ============================================================
+       10. POPUP ALERTE INDIVIDUELLE
+    ============================================================ */
+
+    function showIndividualAlertPopup(alertInfo) {
+        if (!popupContainer) return;
+
+        const name = (alertInfo.first_name && alertInfo.last_name)
+            ? `${alertInfo.first_name} ${alertInfo.last_name}`
+            : "Étudiant anonyme";
+
+        const now = new Date().toLocaleTimeString("fr-FR", {
+            hour: "2-digit", minute: "2-digit"
+        });
+
+        const detailLines = (alertInfo.alerts || []).map(a => {
+            const src   = a.source === "qcm" ? "QCM" : "Webcam";
+            const emo   = a.emotion ? ` · ${a.emotion}` : "";
+            const ratio = a.ratio !== null ? ` (${Math.round(a.ratio * 100)}%)` : "";
+            return `${src}${emo}${ratio}`;
+        });
+
+        const popup = document.createElement("div");
+        popup.className = "alert-popup";
+        popup.innerHTML = `
+            <div class="alert-popup-header">
+                <span class="alert-popup-title">⚠ Alerte individuelle</span>
+                <button class="alert-popup-close" onclick="this.closest('.alert-popup').remove()">✕</button>
+            </div>
+            <div class="alert-popup-name">${name}</div>
+            <div class="alert-popup-detail">
+                ${detailLines.map(l => `<span>${l}</span>`).join("")}
+            </div>
+            <span class="alert-popup-tag">${now}</span>
+        `;
+
+        popupContainer.appendChild(popup);
+
+        // Auto-fermeture après 12 secondes
+        setTimeout(() => {
+            if (popup.parentNode) {
+                popup.style.opacity = "0";
+                popup.style.transition = "opacity 0.4s ease";
+                setTimeout(() => popup.remove(), 400);
+            }
+        }, 12000);
+    }
+
+    function processIndividualAlerts(alertsData) {
+        if (!alertsData) return;
+
+        const individuals = alertsData.individual_alerts || [];
+
+        // Construction des clés actuellement en alerte
+        const currentKeys = new Set();
+
+        for (const alertInfo of individuals) {
+            const sourcesKey = (alertInfo.alerts || [])
+                .map(a => `${a.source}_${a.emotion || ""}`)
+                .sort()
+                .join("|");
+            const key = `${alertInfo.user_id}_${sourcesKey}`;
+            currentKeys.add(key);
+
+            if (!shownAlerts.has(key)) {
+                shownAlerts.add(key);
+                showIndividualAlertPopup(alertInfo);
+            }
+        }
+
+        // Nettoyage : retire les clés d'étudiants repassés sous le seuil
+        // pour qu'ils puissent déclencher une nouvelle popup s'ils y reviennent
+        for (const key of shownAlerts) {
+            if (!currentKeys.has(key)) {
+                shownAlerts.delete(key);
+            }
+        }
+    }
+
+    /* ============================================================
+       11. RAFRAÎCHISSEMENT TOUTES LES 10 SECONDES
+    ============================================================ */
+
+    async function refreshResultsData() {
+        try {
+            const response = await fetch(`/session/${sessionId}/results/data`);
+            if (!response.ok) throw new Error("Erreur chargement");
+
+            const data = await response.json();
+            if (!data.ok) return;
+
+            // Mise à jour graphiques (mode courbes)
+            if (dataEl) {
+                engagementLabels    = data.engagement_labels    || [];
+                engagementValues    = data.engagement_values    || [];
+                qcmEmotionLabels    = data.qcm_emotion_labels   || [];
+                qcmEmotionValues    = data.qcm_emotion_values   || [];
+                webcamEmotionLabels = data.webcam_emotion_labels || [];
+                webcamEmotionValues = data.webcam_emotion_values || [];
+
+                renderEngagementChart(engagementLabels, engagementValues);
+                renderQcmEmotionChart(qcmEmotionLabels, qcmEmotionValues);
+                renderWebcamEmotionChart(webcamEmotionLabels, webcamEmotionValues);
+            }
+
+            // Mise à jour cartes stats
+            updateStatsCards(data);
+
+            // Mise à jour alertes (mode alertes uniquement)
+            if (alertModeActive && data.alerts) {
+                updateClassAlertBanner(data.alerts);
+                processIndividualAlerts(data.alerts);
+            }
+
+        } catch (e) {
+            console.warn("Impossible de rafraîchir les résultats", e);
+        }
+    }
+
+    
+
+    /* ============================================================
+       12. INITIALISATION
     ============================================================ */
 
     // Premier rendu immédiat
