@@ -458,7 +458,9 @@ def build_session_average_data(session_id):
             # Anonymat respecté selon le choix de l'étudiant
             "name":              "Anonyme" if p.anonymous else f"{p.student.first_name} {p.student.last_name}",
             "anonymous":         p.anonymous,
-            "emotion_dominante": emotion_dominante,
+            "emotion_qcm":       compute_dominant(qcm_indiv),      # Émotion dominante QCM seul
+            "emotion_webcam":    compute_dominant(webcam_indiv),   # Émotion dominante DeepFace seul
+            "emotion_dominante": emotion_dominante,                # Émotion dominante QCM + DeepFace
             "nb_qcm":            len(qcm_indiv),
             "nb_webcam":         len(webcam_indiv)
         })
