@@ -440,6 +440,16 @@
                         ${s.anonymous ? "Anonyme" : "👤 " + s.name}
                     </span>
                 </td>
+
+                <!-- Émotion dominante QCM uniquement -->
+                <td style="padding:10px 12px; color:#34d399; font-weight:bold;">
+                    ${s.emotion_qcm || "—"}
+                </td>
+ 
+                <!-- Émotion dominante DeepFace uniquement -->
+                <td style="padding:10px 12px; color:#60a5fa; font-weight:bold;">
+                    ${s.emotion_webcam || "—"}
+                </td>
     
                 <!-- Émotion dominante toutes sources (QCM + DeepFace) -->
                 <td style="padding:10px 12px; color:#a78bfa; font-weight:bold;">
