@@ -1867,6 +1867,11 @@ def session_results_data(session_id):
     alerts_data = None
     if "alertes" in selected_modes:
         alerts_data = compute_alerts(session_id)
+        
+    average_data = None
+    if "moyennes" in selected_modes:
+        average_data = build_session_average_data(session_id)
+    
 
     return jsonify({
         "ok": True,
