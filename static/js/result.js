@@ -340,6 +340,9 @@
             // Mise à jour des cartes
             updateStatsCards(data);
 
+            // Mise à jour des moyennes si le mode est actif
+            updateMoyennes(data);
+
         } catch (e) {
             console.warn("Impossible de rafraîchir les résultats", e);
         }
