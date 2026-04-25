@@ -89,10 +89,6 @@ with app.app_context():
 # RESULTATS SESSION (MODE COURBE)
 # ============================================================
 
-# ============================================================
-# RESULTATS SESSION (MODE COURBE)
-# ============================================================
-
 def normalize_qcm_emotion_label(raw_emotion):
     """
     Normalise les émotions provenant des QCM.
