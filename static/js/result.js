@@ -287,20 +287,23 @@
     /* ============================================================
        9. MISE À JOUR DES CARTES STATS
     ============================================================ */
-
    function updateStatsCards(data) {
-    // On récupère précisément chaque élément par son ID
-    const pCount = document.getElementById("count-participants");
-    const qCount = document.getElementById("count-qcm");
-    const wCount = document.getElementById("count-webcam");
-    const aCount = document.getElementById("count-active");
+       
+        const statValues = document.querySelectorAll(".stat-value");
+        // Ordre des cartes dans le HTML :
+        // 0 = participants
+        // 1 = participants actifs
+        // 2 = QCM
+        // 3 = webcam
+        if (statValues.length >= 4) {
+            statValues[0].innerText = data.participants_count;
+            statValues[1].innerText = data.qcm_count;
+            statValues[2].innerText = data.webcam_count;
+            statValues[3].innerText = data.session_is_active ? "En cours" : "Terminée";
 
-    // On met à jour les textes seulement si les éléments existent
-    if (pCount) pCount.innerText = data.participants_count || 0;
-    if (qCount) qCount.innerText = data.qcm_count || 0;
-    if (wCount) wCount.innerText = data.webcam_count || 0;
-    if (aCount) aCount.innerText = data.active_participants_count || 0;
-}
+        }
+
+    } 
     /* ============================================================
        10. RAFRAÎCHISSEMENT DES DONNÉES DEPUIS LE BACKEND
     ============================================================ */
