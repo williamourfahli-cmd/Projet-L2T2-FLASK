@@ -15,20 +15,23 @@
 -->
 
 <div class="container results-page">
-        <!-- ================= BANNIÈRE ALERTE DE CLASSE ================= -->
+     <!-- ================= BANNIÈRE ALERTE DE CLASSE ================= -->
     <!--
-        Visible uniquement si une alerte de classe est active.
-        Masquée automatiquement par result.js si la condition disparaît.
-    
-    <div id="class-alert-banner" class="alert-banner" style="display:none;">
+        Uniquement visible si le mode "alertes" est actif.
+        Affichée / masquée dynamiquement par result.js selon l'état réel.
+        Masquée par défaut via style="display:none".
+    -->
+    {% if "alertes" in selected_modes %}
+    <div id="class-alert-banner" style="display:none;">
         <div class="alert-banner-content">
-            <span class="alert-banner-icon">⚠️</span>
+            <span>⚠️</span>
             <div>
                 <strong>Alerte de classe</strong>
                 <span id="class-alert-reason"></span>
             </div>
         </div>
-    </div> -->
+    </div>
+    {% endif %}
 
     <!-- ================= EN-TÊTE ================= -->
     <div class="topbar">
@@ -164,24 +167,56 @@
     {% endif %}
 
     <!-- ================= MODE ALERTES ================= -->
-    {% if "alertes" in selected_modes %}
+   {% if "alertes" in selected_modes %}
     <section class="card">
-        <h2>Mode alertes</h2>
+        <div class="chart-header">
+            <div>
+                <h2>Mode alertes</h2>
+                <p>
+                    Surveillance en temps réel de l'engagement.
+                    Les alertes se déclenchent automatiquement si un seuil est dépassé.
+                </p>
+            </div>
+        </div>
+
+        <!-- Résumé des seuils configurés -->
+        <div class="alert-thresholds">
+            <div class="alert-threshold-item">
+                <span class="alert-threshold-label">Seuil individuel QCM</span>
+                <span class="alert-threshold-value">60% réponses négatives</span>
+            </div>
+            <div class="alert-threshold-item">
+                <span class="alert-threshold-label">Seuil individuel Webcam</span>
+                <span class="alert-threshold-value">60% émotions négatives</span>
+            </div>
+            <div class="alert-threshold-item">
+                <span class="alert-threshold-label">Seuil classe (snapshot QCM)</span>
+                <span class="alert-threshold-value">50% classe démotivée</span>
+            </div>
+            <div class="alert-threshold-item">
+                <span class="alert-threshold-label">Seuil classe (accumulation)</span>
+                <span class="alert-threshold-value">40% étudiants en alerte</span>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ================= MODE MOYENNES ================= -->
+    {% if "moyennes" in selected_modes %}
+    <section class="card">
+        <h2>Mode moyennes</h2>
         <p>Ce mode sera ajouté prochainement.</p>
     </section>
     {% endif %}
 
 </div>
 
-<!-- ================= POPUP CONTAINER POUR LES ALERTES  ================= -->
-<!--
-    Les popups d'alerte individuelle s'empilent ici.
-    Injectées dynamiquement par result.js.
-
+<!-- Container des popups alertes individuelles -->
+<!-- Injecté ici uniquement si le mode alertes est actif -->
+{% if "alertes" in selected_modes %}
 <div id="alert-popups-container"></div>
+{% endif %}
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ url_for('static', filename='js/result.js') }}"></script> -->
 
 
 <!-- Librairie de graphiques -->
