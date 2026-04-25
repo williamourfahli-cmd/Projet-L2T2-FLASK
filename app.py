@@ -1888,7 +1888,7 @@ def session_results_data(session_id):
         "qcm_emotion_values": curve_data["qcm_emotion_values"],
         "webcam_emotion_labels": curve_data["webcam_emotion_labels"],
         "webcam_emotion_values": curve_data["webcam_emotion_values"],
-        "alerts": alerts_data
+        "alerts": alerts_data,
         "moyenne_subjective": average_data["moyenne_subjective"] if average_data else None,
         "moyenne_objective":  average_data["moyenne_objective"]  if average_data else None,
         "moyenne_generale":   average_data["moyenne_generale"]   if average_data else None,
