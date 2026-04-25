@@ -1490,12 +1490,14 @@ def session_results_data(session_id):
         "qcm_count": curve_data["qcm_count"],
         "webcam_count": curve_data["webcam_count"],
         "selected_modes": selected_modes,
+        "session_is_active": session_obj.is_active,
         "engagement_labels": curve_data["engagement_labels"],
         "engagement_values": curve_data["engagement_values"],
         "qcm_emotion_labels": curve_data["qcm_emotion_labels"],
         "qcm_emotion_values": curve_data["qcm_emotion_values"],
         "webcam_emotion_labels": curve_data["webcam_emotion_labels"],
-        "webcam_emotion_values": curve_data["webcam_emotion_values"]
+        "webcam_emotion_values": curve_data["webcam_emotion_values"],
+        "alerts": alerts_data
     })
 
 #===================================================================================================
