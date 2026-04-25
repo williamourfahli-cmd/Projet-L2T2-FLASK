@@ -359,6 +359,116 @@ def build_session_curve_data(session_id):
         "webcam_count": len(webcam_rows)
     }
 
+# ============================================================
+# MOYENNES ÉMOTIONNELLES (MODE MOYENNES)
+# ============================================================
+
+# Mapping émotions → catégorie commune
+# Permet de comparer QCM (français) et DeepFace (anglais)
+EMOTION_MAP = {
+    "motivé":   "positif",
+    "neutre":   "neutre",
+    "ennuye":   "négatif",
+    "stresse":  "négatif",
+    "demotive": "négatif",
+    "happy":    "positif",
+    "neutral":  "neutre",
+    "surprise": "neutre",
+    "sad":      "négatif",
+    "angry":    "négatif",
+    "fear":     "négatif",
+    "disgust":  "négatif",
+}
+
+
+def compute_dominant(emotions_list):
+    """
+    Retourne l'émotion la plus fréquente d'une liste.
+
+    Args:
+        emotions_list (list[str]): émotions brutes
+
+    Returns:
+        str: émotion dominante, ou "Aucune donnée" si liste vide
+    """
+    if not emotions_list:
+        return "Aucune donnée"
+
+    counts = {}
+    for e in emotions_list:
+        counts[e] = counts.get(e, 0) + 1
+
+    return max(counts, key=counts.get)
+
+
+def build_session_average_data(session_id):
+    """
+    Calcule les moyennes émotionnelles d'une session :
+      - moyenne subjective  : émotion dominante des QCM
+      - moyenne objective   : émotion dominante DeepFace
+      - moyenne générale    : catégorie dominante (QCM + DeepFace combinés)
+      - données individuelles : émotion dominante par étudiant
+
+    Args:
+        session_id (int): identifiant de la session
+
+    Returns:
+        dict avec les 3 moyennes globales et la liste individuelle
+    """
+
+    # Récupération des données brutes
+    qcm_rows    = QCMResponse.query.filter_by(session_id=session_id).all()
+    webcam_rows = WebcamAnalysis.query.filter_by(session_id=session_id).all()
+    participations = Participation.query.filter_by(session_id=session_id).all()
+
+    # ── Mesure subjective (QCM) ──────────────────────────────
+    qcm_emotions       = [r.emotion for r in qcm_rows if r.emotion]
+    moyenne_subjective = compute_dominant(qcm_emotions)
+
+    # ── Mesure objective (DeepFace) ──────────────────────────
+    webcam_emotions    = [w.dominant_emotion for w in webcam_rows if w.dominant_emotion]
+    moyenne_objective  = compute_dominant(webcam_emotions)
+
+    # ── Mesure générale (QCM + DeepFace → catégories communes) ──
+    toutes_emotions  = qcm_emotions + webcam_emotions
+    categories       = [EMOTION_MAP.get(e.lower(), "neutre") for e in toutes_emotions]
+    moyenne_generale = compute_dominant(categories)
+
+    # ── Données individuelles ────────────────────────────────
+    individuals = []
+
+    for p in participations:
+
+        # Émotions QCM de cet étudiant
+        qcm_indiv = [
+            r.emotion for r in qcm_rows
+            if r.user_id == p.student_id and r.emotion
+        ]
+
+        # Émotions DeepFace de cet étudiant
+        webcam_indiv = [
+            w.dominant_emotion for w in webcam_rows
+            if w.user_id == p.student_id and w.dominant_emotion
+        ]
+
+        # Émotion dominante toutes sources confondues
+        emotion_dominante = compute_dominant(qcm_indiv + webcam_indiv)
+
+        individuals.append({
+            # Anonymat respecté selon le choix de l'étudiant
+            "name":              "Anonyme" if p.anonymous else f"{p.student.first_name} {p.student.last_name}",
+            "anonymous":         p.anonymous,
+            "emotion_dominante": emotion_dominante,
+            "nb_qcm":            len(qcm_indiv),
+            "nb_webcam":         len(webcam_indiv)
+        })
+
+    return {
+        "moyenne_subjective": moyenne_subjective,
+        "moyenne_objective":  moyenne_objective,
+        "moyenne_generale":   moyenne_generale,
+        "individuals":        individuals
+    }
 
 @app.template_filter('heure_fr')
 def heure_fr(dt):
