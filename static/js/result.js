@@ -297,7 +297,7 @@
         // 3 = webcam
         if (statValues.length >= 4) {
             statValues[0].innerText = data.participants_count;
-            statValues[1].innerText = data.qcm_count;
+            statValues[1].innerText = data.active_participants_count || 0;
             statValues[2].innerText = data.webcam_count;
             statValues[3].innerText = data.session_is_active ? "En cours" : "Terminée";
 
