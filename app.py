@@ -1478,6 +1478,11 @@ def session_results_data(session_id):
     # Données graphiques
     curve_data = build_session_curve_data(session_id)
 
+    # Calcul des alertes uniquement si le mode est actif
+    alerts_data = None
+    if "alertes" in selected_modes:
+        alerts_data = compute_alerts(session_id)
+
     return jsonify({
         "ok": True,
         "participants_count": participants_count,
@@ -1773,76 +1778,8 @@ def compute_alerts(session_id):
 
 
 # ============================================================
-# ROUTE : DONNÉES JSON RÉSULTATS (MISE À JOUR)
-# ============================================================
-# Cette route REMPLACE la route session_results_data existante dans app.py.
-# Elle ajoute le champ "alerts" dans la réponse JSON,
-# calculé uniquement si le mode "alertes" est actif.
-
-@app.route("/session/<int:session_id>/results/data")
-def session_results_data(session_id):
-    """
-    Retourne les données JSON de la page résultats.
-    Inclut les alertes si le mode "alertes" est actif pour cette session.
-    """
-
-    if session.get("role") != "professor":
-        return jsonify({"error": "Accès refusé"}), 403
-
-    session_obj = Session.query.get(session_id)
-
-    if not session_obj:
-        return jsonify({"error": "Session introuvable"}), 404
-
-    if session_obj.professor_id != session.get("user_id"):
-        return jsonify({"error": "Accès non autorisé"}), 403
-
-    participants_count = Participation.query.filter_by(
-        session_id=session_id
-    ).count()
-
-    active_participants_count = Participation.query.filter(
-        Participation.session_id == session_id,
-        ~Participation.student_id.in_(
-            db.session.query(QCMResponse.user_id).filter(
-                QCMResponse.session_id == session_id,
-                QCMResponse.phase == "apres"
-            )
-        )
-    ).count()
-
-    raw_modes = (session_obj.mode_affichage or "").strip().lower()
-    selected_modes = [m.strip() for m in raw_modes.split(",") if m.strip()]
-
-    curve_data = build_session_curve_data(session_id)
-
-    # Calcul des alertes uniquement si le mode est actif
-    alerts_data = None
-    if "alertes" in selected_modes:
-        alerts_data = compute_alerts(session_id)
-
-    return jsonify({
-        "ok": True,
-        "participants_count": participants_count,
-        "active_participants_count": active_participants_count,
-        "qcm_count": curve_data["qcm_count"],
-        "webcam_count": curve_data["webcam_count"],
-        "selected_modes": selected_modes,
-        "session_is_active": session_obj.is_active,
-        "engagement_labels": curve_data["engagement_labels"],
-        "engagement_values": curve_data["engagement_values"],
-        "qcm_emotion_labels": curve_data["qcm_emotion_labels"],
-        "qcm_emotion_values": curve_data["qcm_emotion_values"],
-        "webcam_emotion_labels": curve_data["webcam_emotion_labels"],
-        "webcam_emotion_values": curve_data["webcam_emotion_values"],
-        "alerts": alerts_data   # None si mode alertes non actif
-    })
-
-
-# ============================================================
 # ROUTE : HISTORIQUE DES ALERTES
 # ============================================================
-# Nouvelle route à ajouter dans app.py
 
 @app.route("/session/<int:session_id>/alerts")
 def session_alerts(session_id):
