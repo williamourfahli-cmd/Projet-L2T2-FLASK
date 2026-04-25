@@ -717,7 +717,8 @@ def student_dashboard():
     # récupérer participations
     participations = Participation.query.filter_by(
         student_id=session["user_id"]
-    ).all()
+    ).order_by(Participation.date_join.desc()).limit(7).all()
+    #Prend les 7 dernières sessions en partant de la plus récente
 
     return render_template(
         "student_dashboard.html",
