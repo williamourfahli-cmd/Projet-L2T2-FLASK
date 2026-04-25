@@ -1868,6 +1868,7 @@ def session_results_data(session_id):
     if "alertes" in selected_modes:
         alerts_data = compute_alerts(session_id)
         
+    # Calcul des moyennes uniquement si le mode est actif    
     average_data = None
     if "moyennes" in selected_modes:
         average_data = build_session_average_data(session_id)
