@@ -380,6 +380,17 @@
        (= mode moyennes non sélectionné par le prof).
        Appelée automatiquement à chaque cycle de 10 secondes.
     ============================================================ */
+
+    // fonction permettant un code couleur
+    function emotionColor(emotion) {
+        if (!emotion) return "var(--muted)";
+        const e = emotion.toLowerCase();
+        if (["motivé", "joyeux", "heureux"].some(v => e.includes(v)))   return "#22c55e"; // vert
+        if (["neutre", "surpris"].some(v => e.includes(v)))              return "#eab308"; // jaune
+        if (["ennuyé", "stressé", "triste", "dégoûté"].some(v => e.includes(v))) return "#f97316"; // orange
+        if (["démotivé", "colère"].some(v => e.includes(v)))             return "#ef4444"; // rouge
+        return "#a78bfa"; // violet par défaut
+    }
     
     function updateMoyennes(data) {
     
