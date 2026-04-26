@@ -400,6 +400,23 @@ def compute_dominant(emotions_list):
 
     return max(counts, key=counts.get)
 
+# ============================================================
+# TRADUCTION DES ÉMOTIONS DEEPFACE (anglais → français)
+# ============================================================
+EMOTION_TRANSLATIONS = {
+    "angry":    "en colère",
+    "disgust":  "dégoûté",
+    "fear":     "stressé",
+    "happy":    "motivé",
+    "sad":      "triste",
+    "surprise": "surpris",
+    "neutral":  "neutre",
+}
+
+def translate_emotion(emotion):
+    if not emotion:
+        return None
+    return EMOTION_TRANSLATIONS.get(emotion.lower(), emotion)
 
 def build_session_average_data(session_id):
     """
