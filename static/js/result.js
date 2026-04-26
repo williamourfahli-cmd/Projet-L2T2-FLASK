@@ -6,14 +6,13 @@
 
     const dataEl = document.getElementById("resultsPageData");
 
-    // Si l'élément n'existe pas, on quitte
-    if (!dataEl) return;
-
     /**
      * Lit une valeur JSON stockée dans un attribut data-*
      * et la convertit en tableau JavaScript.
      */
     function readJsonData(attrName) {
+        // Si l'élément n'existe pas, on quitte
+        if (!dataEl) return;
         const raw = dataEl.getAttribute(attrName);
 
         if (!raw) return [];
