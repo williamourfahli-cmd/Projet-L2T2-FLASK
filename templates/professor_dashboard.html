@@ -87,6 +87,10 @@
                         <span style="color: var(--muted);">
                             Terminée le {{ s.date_fin | heure_fr }}
                         </span>
+                        <!--bouton pour télécharger les résultats d'une session -->
+                        <a href="{{ url_for('download_session_report', session_id=s.id) }}" class="btn secondary">
+                            ⬇ Télécharger les résultats
+                        </a>
                     {% endif %}
         
                 </div>
