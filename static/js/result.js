@@ -545,6 +545,31 @@
             }
         }
     }
+    /* ============================================================
+       12b. GESTION DE LA MODALE DES PARTICIPANTS
+    ============================================================ */
+    const modalParticipants = document.getElementById('active-participants-modal');
+    const btnCloseModal = document.getElementById('close-modal');
+
+    // On attache la fonction à "window" pour qu'elle soit accessible 
+    // depuis le onclick="openParticipantsModal()" de ton HTML
+    window.openParticipantsModal = function() {
+        if (modalParticipants) {
+            modalParticipants.style.display = 'flex';
+        }
+    };
+
+    if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', () => {
+            modalParticipants.style.display = 'none';
+        });
+    }
+
+    window.addEventListener('click', (event) => {
+        if (event.target === modalParticipants) {
+            modalParticipants.style.display = 'none';
+        }
+    });
 
 
     /* ============================================================
