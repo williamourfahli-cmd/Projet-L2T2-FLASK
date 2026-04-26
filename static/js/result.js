@@ -315,13 +315,10 @@
             if (!response.ok) {
                 throw new Error("Erreur lors du chargement des résultats");
             }
-
             const data = await response.json();
-
             if (!data.ok) {
                 return;
             }
-
             // Mise à jour des variables mémoire
             engagementLabels = data.engagement_labels || [];
             engagementValues = data.engagement_values || [];
