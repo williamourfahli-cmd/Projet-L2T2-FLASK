@@ -443,7 +443,7 @@ def build_session_average_data(session_id):
     moyenne_subjective = compute_dominant(qcm_emotions)
 
     # ── Mesure objective (DeepFace) ──────────────────────────
-    webcam_emotions    = [w.dominant_emotion for w in webcam_rows if w.dominant_emotion]
+    webcam_emotions    = [translate_emotion(w.dominant_emotion) for w in webcam_rows if translate_emotion(w.dominant_emotion)]
     moyenne_objective  = compute_dominant(webcam_emotions)
 
     # ── Mesure générale (QCM + DeepFace → catégories communes) ──
@@ -464,8 +464,8 @@ def build_session_average_data(session_id):
 
         # Émotions DeepFace de cet étudiant
         webcam_indiv = [
-            w.dominant_emotion for w in webcam_rows
-            if w.user_id == p.student_id and w.dominant_emotion
+            translate_emotion(w.dominant_emotion) for w in webcam_rows
+            if w.user_id == p.student_id and translate_emotion(w.dominant_emotion)
         ]
 
         # Émotion dominante toutes sources confondues
