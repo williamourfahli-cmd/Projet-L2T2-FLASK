@@ -400,9 +400,9 @@
     
         // ── Mise à jour des 3 phrases de moyenne globale ──────────
     
-        const subjEl = document.getElementById("avg-subjective");
-        const objEl  = document.getElementById("avg-objective");
-        const genEl  = document.getElementById("avg-general");
+        const subjEl = document.getElementById("avg-subjective").style.color = emotionColor(data.moyenne_subjective);
+        const objEl  = document.getElementById("avg-objective").style.color  = emotionColor(data.moyenne_objective);
+        const genEl  = document.getElementById("avg-general").style.color    = emotionColor(data.moyenne_generale);
     
         // On affiche "Aucune donnée" si le backend n'a rien à retourner
         if (subjEl) subjEl.innerText = data.moyenne_subjective || "Aucune donnée";
