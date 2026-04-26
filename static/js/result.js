@@ -345,7 +345,7 @@
     }
 
     /* ============================================================
-       11a. BANNIÈRE ALERTE DE CLASSE
+       11. BANNIÈRE ALERTE DE CLASSE
     ============================================================ */
 
     function updateClassAlertBanner(alertsData) {
@@ -372,7 +372,7 @@
     }
 
     /* ============================================================
-       11b. MISE À JOUR DES MOYENNES ÉMOTIONNELLES
+       12. MISE À JOUR DES MOYENNES ÉMOTIONNELLES
     
        Met à jour l'encadré des 3 phrases et le tableau individuel.
        Ne fait rien si la section #moyennes-section est absente du DOM
@@ -478,7 +478,7 @@
     }
 
     /* ============================================================
-       12. POPUP ALERTE INDIVIDUELLE
+       13. POPUP ALERTE INDIVIDUELLE
     ============================================================ */
 
     function showIndividualAlertPopup(alertInfo) {
@@ -556,7 +556,7 @@
         }
     }
     /* ============================================================
-       12b. GESTION DE LA MODALE DES PARTICIPANTS
+       14. GESTION DE LA MODALE DES PARTICIPANTS
     ============================================================ */
     const modalParticipants = document.getElementById('active-participants-modal');
     const btnCloseModal = document.getElementById('close-modal');
@@ -583,7 +583,7 @@
 
 
     /* ============================================================
-       13. INITIALISATION
+       15. INITIALISATION
     ============================================================ */
 
     // Premier rendu immédiat
