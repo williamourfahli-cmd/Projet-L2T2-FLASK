@@ -1528,7 +1528,85 @@ def end_session(session_id):
     # Redirection vers le tableau de bord pour rafraîchir la liste des sessions
     return redirect(url_for("professor_dashboard"))
 
+# ============================================================
+# TÉLÉCHARGEMENT DU RAPPORT DE SESSION (PDF texte)
+# ============================================================
 
+@app.route("/session/<int:session_id>/download")
+def download_session_report(session_id):
+    """
+    Génère et retourne un fichier texte récapitulatif de la session.
+    Accessible uniquement par le professeur créateur.
+    """
+    from flask import make_response
+
+    if session.get("role") != "professor":
+        flash("Accès réservé au professeur.", "error")
+        return redirect(url_for("login"))
+
+    session_obj = Session.query.get(session_id)
+
+    if not session_obj or session_obj.professor_id != session.get("user_id"):
+        flash("Session introuvable ou accès non autorisé.", "error")
+        return redirect(url_for("professor_dashboard"))
+
+    # Données de la session
+    average_data = build_session_average_data(session_id)
+    participants_count = Participation.query.filter_by(session_id=session_id).count()
+    qcm_count = QCMResponse.query.filter_by(session_id=session_id).count()
+    webcam_count = WebcamAnalysis.query.filter_by(session_id=session_id).count()
+
+    # Formatage des dates
+    paris = ZoneInfo("Europe/Paris")
+    date_debut = session_obj.date_debut.astimezone(paris).strftime("%d/%m/%Y à %Hh%M") if session_obj.date_debut else "—"
+    date_fin   = session_obj.date_fin.astimezone(paris).strftime("%d/%m/%Y à %Hh%M")   if session_obj.date_fin   else "En cours"
+
+    # Construction du rapport texte
+    lignes = []
+    lignes.append("=" * 60)
+    lignes.append("        RAPPORT DE SESSION — EMOTRACK")
+    lignes.append("=" * 60)
+    lignes.append(f"  Code session     : {session_obj.code_session}")
+    lignes.append(f"  Début            : {date_debut}")
+    lignes.append(f"  Fin              : {date_fin}")
+    lignes.append(f"  Participants     : {participants_count}")
+    lignes.append(f"  Réponses QCM     : {qcm_count}")
+    lignes.append(f"  Analyses webcam  : {webcam_count}")
+    lignes.append("")
+    lignes.append("=" * 60)
+    lignes.append("  MOYENNES GÉNÉRALES")
+    lignes.append("=" * 60)
+    lignes.append(f"  Subjective (QCM)      : {average_data['moyenne_subjective'] or 'Aucune donnée'}")
+    lignes.append(f"  Objective (DeepFace)  : {average_data['moyenne_objective']  or 'Aucune donnée'}")
+    lignes.append(f"  Générale              : {average_data['moyenne_generale']   or 'Aucune donnée'}")
+    lignes.append("")
+    lignes.append("=" * 60)
+    lignes.append("  DÉTAIL PAR ÉTUDIANT")
+    lignes.append("=" * 60)
+
+    # En-tête tableau
+    lignes.append(f"  {'Étudiant':<25} {'Émotion dominante':<20} {'QCM':>5} {'Webcam':>8}")
+    lignes.append("  " + "-" * 58)
+
+    for ind in average_data["individuals"]:
+        nom    = "Anonyme" if ind["anonymous"] else ind["name"]
+        emotion = ind["emotion_dominante"] or "—"
+        lignes.append(f"  {nom:<25} {emotion:<20} {ind['nb_qcm']:>5} {ind['nb_webcam']:>8}")
+
+    lignes.append("")
+    lignes.append("=" * 60)
+    lignes.append("  Généré par EmoTrack")
+    lignes.append("=" * 60)
+
+    contenu = "\n".join(lignes)
+
+    # Retourne le fichier en téléchargement
+    response = make_response(contenu)
+    response.headers["Content-Type"] = "text/plain; charset=utf-8"
+    response.headers["Content-Disposition"] = (
+        f"attachment; filename=rapport_{session_obj.code_session}.txt"
+    )
+    return response
 
 # ============================================================
 # Quitter une session (coté étudiant)
