@@ -401,7 +401,7 @@
     
         // ── Mise à jour des 3 phrases de moyenne globale ──────────
     
-         const subjEl = document.getElementById("avg-subjective");
+        const subjEl = document.getElementById("avg-subjective");
         const objEl  = document.getElementById("avg-objective");
         const genEl  = document.getElementById("avg-general");
     
