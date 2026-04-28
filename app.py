@@ -363,18 +363,19 @@ def build_session_curve_data(session_id):
 # Mapping émotions → catégorie commune
 # Permet de comparer QCM (français) et DeepFace (anglais)
 EMOTION_MAP = {
-    "motivé":   "positif",
+    "motive":   "positif", 
     "neutre":   "neutre",
-    "ennuye":   "négatif",
-    "stresse":  "négatif",
-    "demotive": "négatif",
-    "happy":    "positif",
-    "neutral":  "neutre",
-    "surprise": "neutre",
-    "sad":      "négatif",
-    "angry":    "négatif",
-    "fear":     "négatif",
-    "disgust":  "négatif",
+    "ennuye":   "negatif",   # ← enlever accents partout
+    "stresse":  "negatif",
+    "demotive": "negatif",
+    # DeepFace traduit
+    "motive":    "positif",
+    "neutre":    "neutre",
+    "surpris":   "neutre",
+    "triste":    "negatif",
+    "en colere": "negatif",
+    "degoute":   "negatif",
+    "stresse":   "negatif",
 }
 
 
