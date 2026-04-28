@@ -170,31 +170,32 @@
         <div class="chart-header">
             <div>
                 <h2>Mode alertes</h2>
-                <p>
-                    Surveillance en temps réel de l'engagement.
-                    Les alertes se déclenchent automatiquement si un seuil est dépassé.
-                </p>
+                <p>Les alertes se déclenchent automatiquement si l'un des seuils suivants est dépassé.</p>
             </div>
         </div>
 
-        <!-- Résumé des seuils configurés -->
         <div class="alert-thresholds">
-            <div class="alert-threshold-item">
-                <span class="alert-threshold-label">Seuil individuel QCM</span>
+
+            <div class="alert-threshold-item individual">
+                <span class="alert-threshold-label">Individuel · QCM</span>
                 <span class="alert-threshold-value">60% réponses négatives</span>
             </div>
-            <div class="alert-threshold-item">
-                <span class="alert-threshold-label">Seuil individuel Webcam</span>
+
+            <div class="alert-threshold-item individual">
+                <span class="alert-threshold-label">Individuel · Webcam</span>
                 <span class="alert-threshold-value">60% émotions négatives</span>
             </div>
-            <div class="alert-threshold-item">
-                <span class="alert-threshold-label">Seuil classe (snapshot QCM)</span>
+
+            <div class="alert-threshold-item class">
+                <span class="alert-threshold-label">Classe · Snapshot QCM</span>
                 <span class="alert-threshold-value">50% classe démotivée</span>
             </div>
-            <div class="alert-threshold-item">
-                <span class="alert-threshold-label">Seuil classe (accumulation)</span>
+
+            <div class="alert-threshold-item class">
+                <span class="alert-threshold-label">Classe · Accumulation</span>
                 <span class="alert-threshold-value">40% étudiants en alerte</span>
             </div>
+
         </div>
     </section>
     {% endif %}
