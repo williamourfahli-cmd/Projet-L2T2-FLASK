@@ -383,20 +383,27 @@
     // fonction permettant un code couleur
     // Couvre les valeurs QCM sans accents (ennuye, stresse, demotive)
     // et les valeurs DeepFace traduites (en colère, dégoûté, surpris...)
-    function emotionColor(emotion) {
-    if (!emotion || emotion === "Aucune donnée") return "var(--muted)";
-    const e = emotion.toLowerCase();
-    if (["motiv"].some(v => e.includes(v)))                                return "#22c55e"; // vert  — Motivé
-    if (["neutre"].some(v => e.includes(v)))                               return "#94a3b8"; // gris  — Neutre
-    if (["ennuy"].some(v => e.includes(v)))                                return "#eab308"; // jaune — Ennuyé
-    if (["stress"].some(v => e.includes(v)))                               return "#ec4899"; // rose  — Stressé
-    if (["demotiv", "démotiv"].some(v => e.includes(v)))                   return "#ef4444"; // rouge — Démotivé
-    if (["triste", "sad"].some(v => e.includes(v)))                        return "#f97316"; // orange — Triste
-    if (["col\u00e8re", "colere", "angry"].some(v => e.includes(v)))       return "#ef4444"; // rouge — Colère
-    if (["surpris", "surprise"].some(v => e.includes(v)))                  return "#a78bfa"; // violet — Surpris
-    if (["degout", "dégoût", "disgust"].some(v => e.includes(v)))          return "#f97316"; // orange — Dégoûté
-    return "var(--muted)";
-}
+   function emotionColor(emotion) {
+        if (!emotion || emotion === "Aucune donnée") return "var(--muted)";
+        const e = emotion.toLowerCase();
+    
+        // ── QCM ──────────────────────────────────────────────────
+        if (["motiv"].some(v => e.includes(v)))          return "#22c55e"; // vert   — Motivé
+        if (["neutre"].some(v => e.includes(v)))         return "#94a3b8"; // gris   — Neutre
+        if (["ennuy"].some(v => e.includes(v)))          return "#eab308"; // jaune  — Ennuyé
+        if (["stress"].some(v => e.includes(v)))         return "#ec4899"; // rose   — Stressé
+        if (["demotiv", "démotiv"].some(v => e.includes(v))) return "#ef4444"; // rouge — Démotivé
+    
+        // ── DeepFace traduit ─────────────────────────────────────
+        if (["joie", "happy"].some(v => e.includes(v)))          return "#22c55e"; // vert   — Joie
+        if (["surpris", "surprise"].some(v => e.includes(v)))    return "#818cf8"; // violet — Surprise
+        if (["peur", "fear"].some(v => e.includes(v)))           return "#eab308"; // jaune  — Peur
+        if (["triste", "sad"].some(v => e.includes(v)))          return "#60a5fa"; // bleu   — Tristesse
+        if (["col\u00e8re", "colere", "angry"].some(v => e.includes(v))) return "#ef4444"; // rouge  — Colère
+        if (["degout", "dégoût", "disgust"].some(v => e.includes(v)))    return "#a855f7"; // violet clair — Dégoût
+    
+        return "var(--muted)";
+    }
     
     function updateMoyennes(data) {
     
