@@ -401,14 +401,16 @@
     
         // ── Mise à jour des 3 phrases de moyenne globale ──────────
     
-        const subjEl = document.getElementById("avg-subjective").style.color = emotionColor(data.moyenne_subjective);
-        const objEl  = document.getElementById("avg-objective").style.color  = emotionColor(data.moyenne_objective);
-        const genEl  = document.getElementById("avg-general").style.color    = emotionColor(data.moyenne_generale);
+         const subjEl = document.getElementById("avg-subjective");
+        const objEl  = document.getElementById("avg-objective");
+        const genEl  = document.getElementById("avg-general");
     
+        // Mise à jour du texte ET de la couleur
         // On affiche "Aucune donnée" si le backend n'a rien à retourner
-        if (subjEl) subjEl.innerText = data.moyenne_subjective || "Aucune donnée";
-        if (objEl)  objEl.innerText  = data.moyenne_objective  || "Aucune donnée";
-        if (genEl)  genEl.innerText  = data.moyenne_generale   || "Aucune donnée";
+        if (subjEl) { subjEl.innerText = data.moyenne_subjective || "Aucune donnée"; subjEl.style.color = emotionColor(data.moyenne_subjective); }
+        if (objEl)  { objEl.innerText  = data.moyenne_objective  || "Aucune donnée"; objEl.style.color  = emotionColor(data.moyenne_objective); }
+        if (genEl)  { genEl.innerText  = data.moyenne_generale   || "Aucune donnée"; genEl.style.color  = emotionColor(data.moyenne_generale); }
+    
     
         // ── Mise à jour du tableau individuel ─────────────────────
     
