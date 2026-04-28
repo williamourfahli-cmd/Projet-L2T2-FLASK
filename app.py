@@ -1,6 +1,4 @@
 import os
-#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Cache les warnings TF
-#os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # Force le mode CPU uniquement
 import re
 import random
 import string
@@ -13,7 +11,6 @@ from sqlalchemy import text
 from models import db, User, Session, Participation, UserRole, QCMResponse, WebcamAnalysis, Alert
 import base64
 import numpy as np
-#import cv2
 import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
