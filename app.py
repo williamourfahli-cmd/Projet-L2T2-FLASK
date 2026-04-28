@@ -559,7 +559,7 @@ SEUIL_CLASSE_SNAPSHOT     = 0.50   # 50% classe démotivée au dernier QCM colle
 SEUIL_CLASSE_ACCUMULATION = 0.40   # 40% étudiants en alerte individuelle
 
 # Émotions QCM négatives (en base, brutes)
-QCM_EMOTIONS_NEGATIVES = {"démotivé", "demotive", "ennuyé", "ennuye"}
+QCM_EMOTIONS_NEGATIVES = {"demotive", "ennuye"}
 
 # Émotions DeepFace négatives
 WEBCAM_EMOTIONS_NEGATIVES = {"angry", "fear"}
@@ -1989,9 +1989,6 @@ def session_results_data(session_id):
         "individuals":        average_data["individuals"]        if average_data else [],
     })
 
-#================================================================================================
-#GESTION DES ALERTES
-#===============================================================================================
 
 # ============================================================
 # ROUTE : HISTORIQUE DES ALERTES
