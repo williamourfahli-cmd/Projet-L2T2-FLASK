@@ -595,6 +595,9 @@
     renderQcmEmotionChart(qcmEmotionLabels, qcmEmotionValues);
     renderWebcamEmotionChart(webcamEmotionLabels, webcamEmotionValues);
 
+    // Appel immédiat 
+    refreshResultsData();
+
     // Rafraîchissement automatique toutes les 10 secondes
     setInterval(refreshResultsData, 10000);
 
