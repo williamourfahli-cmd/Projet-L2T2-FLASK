@@ -1036,3 +1036,44 @@ input:checked + .slider:before {
     cursor: pointer;
     color: #666;
 }
+
+/* ======================================== */
+/* MODE ALERTES - PRESENTATION DES SEUILS         */
+/* ======================================= */
+.alert-thresholds {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.alert-threshold-item {
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.alert-threshold-item.individual {
+    border-left: 2px solid rgba(245,158,11,0.7);
+}
+
+.alert-threshold-item.class {
+    border-left: 2px solid rgba(239,68,68,0.7);
+}
+
+.alert-threshold-label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.alert-threshold-value {
+    display: block;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+}
+
