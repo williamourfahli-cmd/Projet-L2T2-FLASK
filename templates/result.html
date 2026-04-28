@@ -44,6 +44,12 @@
         </div>
 
         <div class="results-actions">
+            <!--Bouton historique des alertes-->
+            {% if "alertes" in selected_modes %}
+            <a href="{{ url_for('session_alerts', session_id=session_obj.id) }}" class="btn secondary">
+                Historique des alertes
+            </a>
+            {% endif %}
             <!-- Retour dashboard -->
             <a href="{{ url_for('professor_dashboard') }}" class="btn secondary">
                 Retour dashboard
