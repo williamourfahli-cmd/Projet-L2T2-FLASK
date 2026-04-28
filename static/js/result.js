@@ -12,7 +12,7 @@
      */
     function readJsonData(attrName) {
         // Si l'élément n'existe pas, on quitte
-        if (!dataEl) return;
+        if (!dataEl) return [];
         const raw = dataEl.getAttribute(attrName);
 
         if (!raw) return [];
