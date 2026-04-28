@@ -381,13 +381,15 @@
     ============================================================ */
 
     // fonction permettant un code couleur
+    // Couvre les valeurs QCM sans accents (ennuye, stresse, demotive)
+    // et les valeurs DeepFace traduites (en colère, dégoûté, surpris...)
     function emotionColor(emotion) {
         if (!emotion) return "var(--muted)";
         const e = emotion.toLowerCase();
-        if (["motivé", "joyeux", "heureux"].some(v => e.includes(v)))   return "#22c55e"; // vert
-        if (["neutre", "surpris"].some(v => e.includes(v)))              return "#eab308"; // jaune
-        if (["ennuyé", "stressé", "triste", "dégoûté"].some(v => e.includes(v))) return "#f97316"; // orange
-        if (["démotivé", "colère"].some(v => e.includes(v)))             return "#ef4444"; // rouge
+        if (["motiv"].some(v => e.includes(v)))                                          return "#22c55e"; // vert
+        if (["neutre", "surpris"].some(v => e.includes(v)))                              return "#eab308"; // jaune
+        if (["ennuy", "stress", "triste", "degout", "dégoût"].some(v => e.includes(v))) return "#f97316"; // orange
+        if (["demotiv", "démotiv", "colère", "colere"].some(v => e.includes(v)))   return "#ef4444"; // rouge
         return "#a78bfa"; // violet par défaut
     }
     
