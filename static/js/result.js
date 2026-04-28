@@ -388,19 +388,19 @@
         const e = emotion.toLowerCase();
     
         // ── QCM ──────────────────────────────────────────────────
-        if (["demotiv", "démotiv"].some(v => e.includes(v))) return "#ef4444"; // rouge — Démotivé
-        if (["motiv"].some(v => e.includes(v)))          return "#22c55e"; // vert   — Motivé
-        if (["neutre"].some(v => e.includes(v)))         return "#94a3b8"; // gris   — Neutre
-        if (["ennuy"].some(v => e.includes(v)))          return "#eab308"; // jaune  — Ennuyé
-        if (["stress"].some(v => e.includes(v)))         return "#ec4899"; // rose   — Stressé
+        if (["demotiv"].some(v => e.includes(v)))                        return "#ef4444"; // rouge  — Démotivé
+        if (["motiv"].some(v => e.includes(v)))                          return "#22c55e"; // vert   — Motivé
+        if (["neutre", "neutral"].some(v => e.includes(v)))              return "#94a3b8"; // gris   — Neutre
+        if (["ennuy"].some(v => e.includes(v)))                          return "#eab308"; // jaune  — Ennuyé
+        if (["stress"].some(v => e.includes(v)))                         return "#ec4899"; // rose   — Stressé
     
         // ── DeepFace traduit ─────────────────────────────────────
-        if (["joie", "happy"].some(v => e.includes(v)))          return "#22c55e"; // vert   — Joie
-        if (["surpris", "surprise"].some(v => e.includes(v)))    return "#818cf8"; // violet — Surprise
-        if (["peur", "fear"].some(v => e.includes(v)))           return "#eab308"; // jaune  — Peur
-        if (["triste", "sad"].some(v => e.includes(v)))          return "#60a5fa"; // bleu   — Tristesse
-        if (["col\u00e8re", "colere", "angry"].some(v => e.includes(v))) return "#ef4444"; // rouge  — Colère
-        if (["degout", "dégoût", "disgust"].some(v => e.includes(v)))    return "#a855f7"; // violet clair — Dégoût
+        if (["joie", "happy"].some(v => e.includes(v)))                  return "#22c55e"; // vert   — Joie
+        if (["surpris", "surprise"].some(v => e.includes(v)))            return "#818cf8"; // violet — Surprise
+        if (["peur", "fear"].some(v => e.includes(v)))                   return "#eab308"; // jaune  — Peur
+        if (["triste", "sad"].some(v => e.includes(v)))                  return "#60a5fa"; // bleu   — Tristesse
+        if (["colere", "angry"].some(v => e.includes(v)))                return "#ef4444"; // rouge  — Colère
+        if (["degout", "disgust"].some(v => e.includes(v)))              return "#a855f7"; // violet — Dégoût
     
         return "var(--muted)";
     }
