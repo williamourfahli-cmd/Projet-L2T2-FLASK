@@ -446,8 +446,7 @@ def build_session_average_data(session_id):
 
     # ── Mesure générale (QCM + DeepFace → catégories communes) ──
     toutes_emotions  = qcm_emotions + webcam_emotions
-    categories       = [EMOTION_MAP.get(e.lower(), "neutre") for e in toutes_emotions]
-    moyenne_generale = compute_dominant(categories)
+    moyenne_generale = compute_dominant(toutes_emotions)  # émotion réelle dominante
 
     # ── Données individuelles ────────────────────────────────
     individuals = []
