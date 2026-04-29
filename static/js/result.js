@@ -345,7 +345,7 @@
             // Mise à jour des alertes si le mode est actif
             if(alertModeActive){
                 updateClassAlertBanner(data.alerts);
-                processIndividualAlerts(datad.alerts);
+                processIndividualAlerts(data.alerts);
             }
 
         } catch (e) {
