@@ -591,7 +591,7 @@ def check_individual_alert_qcm(session_id, user_id):
 
     """ Si les données ne sont pas récupérées"""
     if not responses:
-    print(f"[ALERT QCM] user={user_id} -> {len(responses)} réponse(s) trouvée(s)") # log explicites en cas de problème de récupération des alertes
+        print(f"[ALERT QCM] user={user_id} -> {len(responses)} réponse(s) trouvée(s)") # log explicites en cas de problème de récupération des alertes
         return False, 0.0, None
 
     """On compte combien de réponses sont négatives (démotivées/ennuyés) puis calcule le ratio
