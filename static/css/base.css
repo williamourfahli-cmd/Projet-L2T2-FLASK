@@ -729,8 +729,8 @@ input:checked + .slider:before {
 /*==================================================*/
 /* ===== BANNIÈRE ALERTE CLASSE =====*/
 .alert-banner {
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.18);
+    border: 1px solid rgba(239, 68, 68, 0.5);
     border-radius: 12px;
     padding: 14px 20px;
     animation: pulseAlert 2s ease-in-out infinite;
@@ -746,6 +746,7 @@ input:checked + .slider:before {
     align-items: center;
     gap: 12px;
     color: #fca5a5;
+    flex: 1;
 }
 
 .alert-banner-icon {
@@ -756,7 +757,31 @@ input:checked + .slider:before {
     display: block;
     color: #ef4444;
     margin-bottom: 2px;
-} 
+}
+
+.alert-banner-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.alert-banner-close {
+    background: none;
+    border: none;
+    color: #fca5a5;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.alert-banner-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: white;
+}
 
 /* ===== POPUPS ALERTES INDIVIDUELLES =====*/
 #alert-popups-container {
