@@ -13,7 +13,7 @@ import base64
 import numpy as np
 import json
 from datetime import datetime, timezone
-from collection import Counter # Counter permet de compter des occurrences dans une liste
+from collections import Counter # Counter permet de compter des occurrences dans une liste
 # type de données du module collection, module qui regroupe des  types de données qui ne sont pas automatiquement inclus
 
 from zoneinfo import ZoneInfo
