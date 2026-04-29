@@ -23,12 +23,15 @@
     -->
     {% if "alertes" in selected_modes %}
     <div id="class-alert-banner" style="display:none;">
-        <div class="alert-banner-content">
-            <span>⚠️</span>
-            <div>
-                <strong>Alerte de classe</strong>
-                <span id="class-alert-reason"></span>
+        <div class="alert-banner-wrapper">
+            <div class="alert-banner-content">
+                <span class="alert-banner-icon">⚠️</span>
+                <div>
+                    <strong>Alerte de classe</strong>
+                    <span id="class-alert-reason"></span>
+                </div>
             </div>
+            <button class="alert-banner-close" onclick="document.getElementById('class-alert-banner').style.display='none'">✕</button>
         </div>
     </div>
     {% endif %}
