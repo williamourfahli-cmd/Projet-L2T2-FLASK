@@ -52,8 +52,8 @@
 
     // On détecte si le mode alertes est actif côté DOM
     // plutôt que de le lire depuis Flask pour éviter le couplage
-    const alertBanner   = document.getElementById("class-alert-banner");
-    const popupContainer = document.getElementById("alert-popups-container");
+    const alertBanner   = document.getElementById("class-alert-banner"); // cherche si #class-alert-banner existe dans result.html. Si oui alertModeActive = true
+    const popupContainer = document.getElementById("alert-popups-container"); // de même pour les conteneur des alert pop up 
     const alertModeActive = !!alertBanner;
     
 
@@ -65,11 +65,13 @@
     let qcmEmotionChart = null;
     let webcamEmotionChart = null;
 
-    /* ============================================================
+    /* ===========================================================================================================
        5. MÉMOIRE DES ALERTES INDIVIDUELLES DÉJÀ AFFICHÉES
+       shownAlert est un Set(liste sans doublon) qui mémorise les alertes déjà affichées pour
+       éviter de spammer le professeur avec les même pop up à chaque refresh, c'est-à-dire toutes les 10 secondes
        Clé : "<user_id>_<source>_<emotion>"
        Réinitialisée si l'étudiant repasse sous le seuil
-    ============================================================ */
+    ============================================================================================================ */
 
     const shownAlerts = new Set();
 
@@ -303,9 +305,10 @@
         }
 
     } 
-    /* ============================================================
+    /* ======================================================================================================================
        10. RAFRAÎCHISSEMENT DES DONNÉES DEPUIS LE BACKEND
-    ============================================================ */
+       Fonction appelée toutes les 10 secondes qui récupère les données fraiches depuis Flask et mets à jour les résulats
+    ====================================================================================================================== */
 
     async function refreshResultsData() {
         try {
@@ -344,9 +347,10 @@
         }
     }
 
-    /* ============================================================
+    /* ==============================================================================================
        11. BANNIÈRE ALERTE DE CLASSE
-    ============================================================ */
+       Affiche ou masque la bannière rouge en haut de la page selon si class_alert est true ou non 
+    ============================================================================================= */
 
     function updateClassAlertBanner(alertsData) {
         if (!alertBanner) return;
@@ -493,11 +497,13 @@
         `).join("");
     }
 
-    /* ============================================================
+    /* ====================================================================================================================
        13. POPUP ALERTE INDIVIDUELLE
-    ============================================================ */
+    ======================================================================================================================== */
 
     function showIndividualAlertPopup(alertInfo) {
+    /*Crée un pop up en bas à droite pour un étudiant en alerte, avec son nom, la source (QCM/webcam), lémotion et le ratio
+       Le pop up disparait automatiquement au bout de 12 secondes */
         if (!popupContainer) return;
 
         const name = (alertInfo.first_name && alertInfo.last_name)
@@ -542,6 +548,8 @@
     }
 
     function processIndividualAlerts(alertsData) {
+    /* Parcourt la liste des étudiants en alerte, génère une clé unique pour chacun
+    et affiche un message uniquemlent si la clé n'a pas encore été affichée */
         if (!alertsData) return;
 
         const individuals = alertsData.individual_alerts || [];
