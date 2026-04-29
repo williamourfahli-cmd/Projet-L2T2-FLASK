@@ -13,6 +13,9 @@ import base64
 import numpy as np
 import json
 from datetime import datetime, timezone
+from collection import Counter # Counter permet de compter des occurrences dans une liste
+# type de données du module collection, module qui regroupe des  types de données qui ne sont pas automatiquement inclus
+
 from zoneinfo import ZoneInfo
 import requests
 # ============================================================
@@ -580,8 +583,6 @@ def check_individual_alert_qcm(session_id, user_id):
     Returns:
         tuple (bool, float, str) : (alerte?, ratio, émotion dominante)
     """
-    from collections import Counter
-
     """Récupère l'ensemble des réponses du QCM d'un étudiant"""
     responses = QCMResponse.query.filter_by(
         session_id=session_id,
@@ -590,6 +591,7 @@ def check_individual_alert_qcm(session_id, user_id):
 
     """ Si les données ne sont pas récupérées"""
     if not responses:
+    print(f"[ALERT QCM] user={user_id} -> {len(responses)} réponse(s) trouvée(s)") # log explicites en cas de problème de récupération des alertes
         return False, 0.0, None
 
     """On compte combien de réponses sont négatives (démotivées/ennuyés) puis calcule le ratio
@@ -619,7 +621,6 @@ def check_individual_alert_webcam(session_id, user_id):
     Returns:
         tuple (bool, float, str) : (alerte?, ratio, émotion dominante)
     """
-    from collections import Counter
 
     analyses = WebcamAnalysis.query.filter_by(
         session_id=session_id,
@@ -627,6 +628,7 @@ def check_individual_alert_webcam(session_id, user_id):
     ).all()
 
     if not analyses:
+        print(f"[ALERT WEBCAM] user={user_id} -> {len(analyses)} analyse(s) trouvée(s)") # ajout d'un log explicite en cas de probleme de récupération des résultats
         return False, 0.0, None
 
     negatives = [
@@ -666,6 +668,7 @@ def check_class_snapshot_alert(session_id):
     ).scalar()
 
     if last_occ is None:
+        print("[ALERT SCREENSHOT DERNIER QCM] -> les derniers QCMs n'ont pas été récupérés")
         return False, 0.0
 
     responses = QCMResponse.query.filter_by(
