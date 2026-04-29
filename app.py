@@ -554,10 +554,10 @@ def generate_session_code():
 # SEUILS DU MODE ALERTE
 # ============================================================
 
-SEUIL_INDIVIDUEL_QCM      = 0.60   # 60% réponses négatives (démotivé/ennuyé)
-SEUIL_INDIVIDUEL_WEBCAM   = 0.60   # 60% analyses négatives (angry/fear)
-SEUIL_CLASSE_SNAPSHOT     = 0.50   # 50% classe démotivée au dernier QCM collectif
-SEUIL_CLASSE_ACCUMULATION = 0.40   # 40% étudiants en alerte individuelle
+SEUIL_INDIVIDUEL_QCM      = 0.60   # Si + de 60% des réponses des QCM sont négatives (démotivé/ennuyé)
+SEUIL_INDIVIDUEL_WEBCAM   = 0.60   # Si + de 60% des analyses négatives (angry/fear)
+SEUIL_CLASSE_SNAPSHOT     = 0.50   # Si plus de 50% des classe démotivée au dernier QCM collectif
+SEUIL_CLASSE_ACCUMULATION = 0.40   # SI plus de 40% des  étudiants sont en alerte individuelle
 
 # Émotions QCM négatives (en base, brutes)
 QCM_EMOTIONS_NEGATIVES = {"demotive", "ennuye"}
@@ -582,14 +582,18 @@ def check_individual_alert_qcm(session_id, user_id):
     """
     from collections import Counter
 
+    """Récupère l'ensemble des réponses du QCM d'un étudiant"""
     responses = QCMResponse.query.filter_by(
         session_id=session_id,
         user_id=user_id
     ).all()
 
+    """ Si les données ne sont pas récupérées"""
     if not responses:
         return False, 0.0, None
 
+    """On compte combien de réponses sont négatives (démotivées/ennuyés) puis calcule le ratio
+    Si le résultat est supérieur à 60% -> Déclenchement de l'alerte"""
     negatives = [
         r for r in responses
         if (r.emotion or "").strip().lower() in QCM_EMOTIONS_NEGATIVES
@@ -652,6 +656,8 @@ def check_class_snapshot_alert(session_id):
     Returns:
         tuple (bool, float) : (alerte?, ratio)
     """
+
+    """ Récupère les réponses des QCM le plus récent, donc le QCM de la phase pendant dont l'occurence est la plus grande"""
     last_occ = db.session.query(
         db.func.max(QCMResponse.occurrence)
     ).filter_by(
@@ -668,6 +674,7 @@ def check_class_snapshot_alert(session_id):
         occurrence=last_occ
     ).all()
 
+    """Si les réponses ne sont pas récupérées"""
     if not responses:
         return False, 0.0
 
@@ -682,7 +689,8 @@ def check_class_snapshot_alert(session_id):
 
 def save_alert(session_id, level, source, user_id=None, emotion=None, ratio=None):
     """
-    Persiste une alerte en base, avec fenêtre anti-doublon de 60 secondes.
+    Sauvegarde une alerte en base, avec fenêtre anti-doublon de 60 secondes :
+    si la même alerte a déjà été sauvegardée il y a moins de 60 secondes, on ne la sauvegarde pas à nouveau.
 
     Args:
         session_id (int)  : session concernée
