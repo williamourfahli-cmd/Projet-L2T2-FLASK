@@ -342,6 +342,12 @@
             // Mise à jour des moyennes si le mode est actif
             updateMoyennes(data);
 
+            // Mise à jour des alertes si le mode est actif
+            if(alertModeActive){
+                updateClassAlertBanner(data.alerts);
+                processIndividualAlerts(datad.alerts);
+            }
+
         } catch (e) {
             console.warn("Impossible de rafraîchir les résultats", e);
         }
