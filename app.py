@@ -577,38 +577,77 @@ def check_individual_alert_qcm(session_id, user_id):
     """
     Vérifie si un étudiant dépasse le seuil QCM individuel.
 
-    Calcule le ratio de réponses négatives (démotivé/ennuyé)
+    Calcule le ratio des réponses négatives (démotivé/ennuyé)
     sur l'ensemble de ses réponses pendant la session.
+    Le ratio est pondéré par l'intensité :
+    Au lieu de compter 1 réponse négative = 1 point, chaque réponse
+    négative vaut (slider / 5). Ainsi une réponse "démotivé" à intensité
+    5 pèse 5x plus qu'une à intensité 1.
 
     Returns:
         tuple (bool, float, str) : (alerte?, ratio, émotion dominante)
+ 
+    Exemple :
+        3 réponses négatives avec slider qui vaut [5, 4, 1] et 2 positives au slider moyen 3
+        poids_negatifs = 5/5 + 4/5 + 1/5 = 1.0 + 0.8 + 0.2 = 2.0
+        poids_total = 2.0 + 2 * (3/5) = 2.0 + 1.2 = 3.2 
+        ratio = 2.0 / 3.2 = 0.625 → alerte (> 0.60)
     """
-    """Récupère l'ensemble des réponses du QCM d'un étudiant"""
+    
+    #Récupère l'ensemble des réponses du QCM d'un étudiant
     responses = QCMResponse.query.filter_by(
         session_id=session_id,
         user_id=user_id
     ).all()
 
-    """ Si les données ne sont pas récupérées"""
+    # Si les données ne sont pas récupérées
     if not responses:
         print(f"[ALERT QCM] user={user_id} -> {len(responses)} réponse(s) trouvée(s)") # log explicites en cas de problème de récupération des alertes
         return False, 0.0, None
 
-    """On compte combien de réponses sont négatives (démotivées/ennuyés) puis calcule le ratio
-    Si le résultat est supérieur à 60% -> Déclenchement de l'alerte"""
+   #Sépare les réponses négatives des autres "positives"
     negatives = [
         r for r in responses
         if (r.emotion or "").strip().lower() in QCM_EMOTIONS_NEGATIVES
     ]
+    positives = [
+        r for r in responses
+        if r not in negatives
+    ]
 
-    ratio = len(negatives) / len(responses)
-
+    # Calcule le poids de chaque réponse négative selon son intensité (slider / 5)
+    # Si le slider est absent, on prend 3 (valeur neutre par défaut)
+    poids_negatifs = sum(
+        (r.slider_value if r.slider_value is not None else 3) / 5.0
+        for r in negatives
+    )
+ 
+    # Les réponses positives sont aussi pondérées par leur intensité
+    poids_positifs = sum(
+        (r.slider_value if r.slider_value is not None else 3) / 5.0
+        for r in positives
+    )
+ 
+    poids_total = poids_negatifs + poids_positifs
+ 
+    # Évite une division par zéro (ne devrait pas arriver si responses non vide)
+    if poids_total == 0:
+        return False, 0.0, None
+ 
+    ratio = poids_negatifs / poids_total
+ 
+    # Trouve l'émotion négative dominante pour l'afficher dans la popup
     dominant = None
     if negatives:
         counts = Counter(r.emotion.strip().lower() for r in negatives if r.emotion)
         dominant = counts.most_common(1)[0][0] if counts else None
 
+    #log explicite de l'alerte
+    print(f"[ALERT QCM] user={user_id} → ratio_pondéré={round(ratio, 2)}, dominant={dominant}, alerte={ratio >= SEUIL_INDIVIDUEL_QCM}")
+
+    #Retour
     return ratio >= SEUIL_INDIVIDUEL_QCM, round(ratio, 2), dominant
+    
 
 
 def check_individual_alert_webcam(session_id, user_id):
