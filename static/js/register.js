@@ -42,6 +42,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 emailConfirm.reportValidity();
             } else {
                 emailConfirm.setCustomValidity("");
+                //AJOUT
+                e.target.submit();
             }
         });
 
