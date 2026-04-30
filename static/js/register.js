@@ -44,6 +44,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 emailConfirm.setCustomValidity("");
                 //AJOUT
                 e.target.submit();
+                /* AU sinon essayer avec 
+                emailConfirm.reportValidity() 
+                Si tout est bon, la soumission du formulaire n'est pas bloquée */
             }
         });
 
