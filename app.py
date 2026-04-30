@@ -690,14 +690,14 @@ def check_individual_alert_webcam(session_id, user_id):
 def check_class_snapshot_alert(session_id):
     """
     Vérifie si le dernier QCM collectif dépasse le seuil de classe.
-
+ 
     Récupère la dernière occurrence "pendant" et calcule
     le ratio de réponses négatives sur toutes les réponses de cette occurrence.
-
+ 
     Returns:
         tuple (bool, float) : (alerte?, ratio)
     """
-
+ 
     """ Récupère les réponses des QCM le plus récent, donc le QCM de la phase pendant dont l'occurence est la plus grande"""
     last_occ = db.session.query(
         db.func.max(QCMResponse.occurrence)
@@ -705,27 +705,43 @@ def check_class_snapshot_alert(session_id):
         session_id=session_id,
         phase="pendant"
     ).scalar()
-
+ 
     if last_occ is None:
         print("[ALERT SCREENSHOT DERNIER QCM] -> les derniers QCMs n'ont pas été récupérés")
         return False, 0.0
-
+ 
     responses = QCMResponse.query.filter_by(
         session_id=session_id,
         phase="pendant",
         occurrence=last_occ
     ).all()
-
+ 
     """Si les réponses ne sont pas récupérées"""
     if not responses:
         return False, 0.0
-
+ 
     negatives = [
         r for r in responses
         if (r.emotion or "").strip().lower() in QCM_EMOTIONS_NEGATIVES
     ]
-
-    ratio = len(negatives) / len(responses)
+    positives = [r for r in responses if r not in negatives]
+ 
+    # Pondération par intensité — même logique que check_individual_alert_qcm
+    poids_negatifs = sum(
+        (r.slider_value if r.slider_value is not None else 3) / 5.0
+        for r in negatives
+    )
+    poids_positifs = sum(
+        (r.slider_value if r.slider_value is not None else 3) / 5.0
+        for r in positives
+    )
+ 
+    poids_total = poids_negatifs + poids_positifs
+    if poids_total == 0:
+        return False, 0.0
+ 
+    ratio = poids_negatifs / poids_total
+    print(f"[ALERT CLASSE SNAPSHOT] occurrence={last_occ}, {len(responses)} réponse(s), ratio_pondéré={round(ratio, 2)}, alerte={ratio >= SEUIL_CLASSE_SNAPSHOT}")
     return ratio >= SEUIL_CLASSE_SNAPSHOT, round(ratio, 2)
 
 
