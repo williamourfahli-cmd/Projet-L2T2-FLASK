@@ -58,6 +58,8 @@ app.config["MAIL_USE_TLS"] = True
 app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
 app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
 app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_USERNAME")
+# Modification
+app.config["MAIL_TIMEOUT"] = 10
 
 
 mail = Mail(app)
@@ -995,10 +997,9 @@ def register():
             verification_token=token
         )
 
-        db.session.add(user)
-        db.session.commit()
+        
 
-        # Envoi email
+        # Envoi email de confirmation
         confirm_url = url_for("confirm_email", token=token, _external=True)
 
         try:
@@ -1013,10 +1014,13 @@ def register():
             )
             mail.send(msg)
 
+            #Enregistre en base de données
+            db.session.add(user)
+            db.session.commit()
             flash("Inscription réussie ! Vérifie ta boîte mail.", "success")
             return redirect(url_for("login"))
 
-        #Modification 
+        
          except Exception as e:
             print(f"[REGISTER] Erreur envoi email : {e}")
             # On crée quand même le compte même si l'email échoue
