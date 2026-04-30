@@ -58,7 +58,10 @@ app.config["MAIL_USE_TLS"] = True
 app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
 app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
 app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_USERNAME")
- 
+#Ajout d'un timeout pour éviter de tuer l'envoi du mail de confirmation trop tot
+app.config["MAIL_TIMEOUT"] = 10
+
+
 mail = Mail(app)
 
 # Liaison de SQLAlchemy à l'application
@@ -1015,11 +1018,22 @@ def register():
             flash("Inscription réussie ! Vérifie ta boîte mail.", "success")
             return redirect(url_for("login"))
 
-        except Exception as e:
-            print(e)
-            flash("Compte créé mais email non envoyé.", "warning")
+        #Modification 
+         except Exception as e:
+            print(f"[REGISTER] Erreur envoi email : {e}")
+            # On crée quand même le compte même si l'email échoue
+            try:
+                db.session.add(user)
+                db.session.commit()
+            except Exception as db_error:
+                print(f"[REGISTER] Erreur base de données : {db_error}")
+                db.session.rollback()
+                flash("Erreur lors de la création du compte. Réessaie.", "error")
+                return render_template("register.html")
+ 
+            flash("Compte créé mais email de confirmation non envoyé. Contacte un administrateur.", "warning")
             return redirect(url_for("login"))
-
+ 
     return render_template("register.html")
 
 # ============================================================
