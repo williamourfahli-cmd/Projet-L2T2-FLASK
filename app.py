@@ -22,6 +22,9 @@ from collections import Counter # Counter permet de compter des occurrences dans
 
 from zoneinfo import ZoneInfo
 import requests
+import smtplib
+import ssl
+from email.message import EmailMessage
 
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
@@ -83,20 +86,20 @@ app.config["SESSION_COOKIE_SAMESITE"] = 'Lax'
 app.config["PERMANENT_SESSION_LIFETIME"] = 7200
 
 # ============================================================
-# CONFIGURATION FLASK-MAIL
+# CONFIGURATION EMAIL
 # ============================================================
-# Ces variables doivent être définies dans les variables d'environnement Render :
-# MAIL_USERNAME : votre adresse Gmail (ex: emotrack.noreply@gmail.com)
-# MAIL_PASSWORD : mot de passe d'application Gmail (pas votre vrai mdp)
+
 app.config["MAIL_SERVER"] = "smtp.gmail.com"
 app.config["MAIL_PORT"] = 587
 app.config["MAIL_USE_TLS"] = True
+app.config["MAIL_USE_SSL"] = False
+
 app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
 app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
 app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_USERNAME")
-# Modification
-app.config["MAIL_TIMEOUT"] = 10
 
+# Timeout court pour éviter que Render tue le worker
+app.config["MAIL_TIMEOUT"] = 8
 
 mail = Mail(app)
 
@@ -595,6 +598,68 @@ def generate_session_code():
     """
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
+
+
+def send_confirmation_email(email, first_name, confirm_url):
+    """
+    Envoie l'email de confirmation avec smtplib.
+
+    Cette fonction remplace mail.send(msg) afin de mieux contrôler
+    le timeout et éviter les blocages sur Render.
+
+    Returns:
+        bool: True si l'email est envoyé, False sinon
+    """
+
+    mail_server = app.config.get("MAIL_SERVER")
+    mail_port = app.config.get("MAIL_PORT")
+    mail_username = app.config.get("MAIL_USERNAME")
+    mail_password = app.config.get("MAIL_PASSWORD")
+    mail_sender = app.config.get("MAIL_DEFAULT_SENDER")
+    mail_timeout = app.config.get("MAIL_TIMEOUT", 8)
+
+    if not mail_server or not mail_port or not mail_username or not mail_password:
+        print("[MAIL] Configuration email incomplète.")
+        return False
+
+    try:
+        html_body = render_template(
+            "email_confirmation.html",
+            first_name=first_name,
+            confirm_url=confirm_url
+        )
+
+        text_body = (
+            f"Bonjour {first_name},\n\n"
+            "Merci de confirmer ton compte EmoTrack en cliquant sur le lien suivant :\n"
+            f"{confirm_url}\n\n"
+            "Si tu n'es pas à l'origine de cette inscription, ignore ce message."
+        )
+
+        msg = EmailMessage()
+        msg["Subject"] = "Confirme ton compte EmoTrack"
+        msg["From"] = mail_sender
+        msg["To"] = email
+
+        msg.set_content(text_body)
+        msg.add_alternative(html_body, subtype="html")
+
+        context = ssl.create_default_context()
+
+        with smtplib.SMTP(mail_server, mail_port, timeout=mail_timeout) as smtp:
+            smtp.ehlo()
+            smtp.starttls(context=context)
+            smtp.ehlo()
+            smtp.login(mail_username, mail_password)
+            smtp.send_message(msg)
+
+        print(f"[MAIL] Email de confirmation envoyé à {email}")
+        return True
+
+    except Exception as e:
+        print(f"[MAIL] Erreur envoi email : {repr(e)}")
+        return False
+
 # ============================================================
 # SEUILS DU MODE ALERTE
 # ============================================================
@@ -973,8 +1038,8 @@ def register():
     - valide le format de l'email
     - vérifie que l'email n'existe pas déjà
     - crée le compte utilisateur en base
-    - tente d'envoyer un email de confirmation
-    - évite de faire planter l'application si l'envoi du mail échoue
+    - génère un token de confirmation
+    - envoie un email de confirmation avec timeout contrôlé
     """
 
     if request.method == "POST":
@@ -1010,7 +1075,7 @@ def register():
             flash("Rôle invalide.", "error")
             return render_template("register.html")
 
-        # Vérification doublon email
+        # Vérification que l'email n'existe pas déjà
         try:
             existing_user = User.query.filter_by(email=email).first()
         except Exception as e:
@@ -1022,9 +1087,10 @@ def register():
             flash("Un compte existe déjà.", "warning")
             return redirect(url_for("login"))
 
-        # Création de l'utilisateur
+        # Création du token de confirmation
         token = secrets.token_urlsafe(32)
 
+        # Création de l'utilisateur
         user = User(
             first_name=first_name,
             last_name=last_name,
@@ -1035,7 +1101,7 @@ def register():
             verification_token=token
         )
 
-        # Enregistrement du compte en base AVANT l'envoi du mail
+        # Enregistrement en base AVANT l'envoi du mail
         try:
             db.session.add(user)
             db.session.commit()
@@ -1048,40 +1114,22 @@ def register():
         # Création du lien de confirmation
         confirm_url = url_for("confirm_email", token=token, _external=True)
 
-        # Si la configuration mail est absente, on ne bloque pas l'inscription
-        if not app.config.get("MAIL_USERNAME") or not app.config.get("MAIL_PASSWORD"):
-            print("[MAIL] Configuration email absente.")
-            flash(
-                "Compte créé, mais email de confirmation non envoyé. Contacte un administrateur.",
-                "warning"
-            )
-            return redirect(url_for("login"))
+        # Envoi de l'email de confirmation
+        email_sent = send_confirmation_email(
+            email=email,
+            first_name=first_name,
+            confirm_url=confirm_url
+        )
 
-        # Envoi du mail de confirmation
-        try:
-            msg = Message(
-                subject="Confirme ton compte",
-                recipients=[email]
-            )
-
-            msg.html = render_template(
-                "email_confirmation.html",
-                first_name=first_name,
-                confirm_url=confirm_url
-            )
-
-            mail.send(msg)
-
+        if email_sent:
             flash("Inscription réussie ! Vérifie ta boîte mail.", "success")
-            return redirect(url_for("login"))
-
-        except Exception as e:
-            print(f"[MAIL] Erreur envoi email : {e}")
+        else:
             flash(
-                "Compte créé, mais email de confirmation non envoyé. Contacte un administrateur.",
+                "Compte créé, mais l'email de confirmation n'a pas pu être envoyé. Contacte un administrateur.",
                 "warning"
             )
-            return redirect(url_for("login"))
+
+        return redirect(url_for("login"))
 
     return render_template("register.html")
 
