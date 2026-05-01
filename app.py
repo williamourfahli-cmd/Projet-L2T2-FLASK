@@ -602,42 +602,71 @@ def generate_session_code():
 
 def send_confirmation_email(email, first_name, confirm_url):
     """
-    Envoie l'email de confirmation via l'API Resend.
-
-    Cette solution utilise HTTPS au lieu de SMTP.
-    Elle fonctionne donc mieux sur Render Free.
+    Envoie l'email de confirmation via l'API Brevo.
     """
 
-    api_key = os.environ.get("RESEND_API_KEY")
+    api_key = os.environ.get("BREVO_API_KEY")
+    sender_email = os.environ.get("BREVO_SENDER_EMAIL", "emotrack@gmail.com")
+    sender_name = os.environ.get("BREVO_SENDER_NAME", "EmoTrack")
 
     if not api_key:
-        print("[MAIL] RESEND_API_KEY manquante.")
+        print("[BREVO] BREVO_API_KEY manquante.")
         return False
+
+    html_body = render_template(
+        "email_confirmation.html",
+        first_name=first_name,
+        confirm_url=confirm_url
+    )
+
+    text_body = (
+        f"Bonjour {first_name},\n\n"
+        "Merci de confirmer ton compte EmoTrack en cliquant sur le lien suivant :\n"
+        f"{confirm_url}\n\n"
+        "Si tu n'es pas à l'origine de cette inscription, ignore ce message."
+    )
+
+    payload = {
+        "sender": {
+            "name": sender_name,
+            "email": sender_email
+        },
+        "to": [
+            {
+                "email": email,
+                "name": first_name
+            }
+        ],
+        "subject": "Confirme ton compte EmoTrack",
+        "htmlContent": html_body,
+        "textContent": text_body
+    }
+
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json"
+    }
 
     try:
-        resend.api_key = api_key
-
-        html_body = render_template(
-            "email_confirmation.html",
-            first_name=first_name,
-            confirm_url=confirm_url
+        response = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            json=payload,
+            headers=headers,
+            timeout=10
         )
 
-        params = {
-            "from": "EmoTrack <onboarding@resend.dev>",
-            "to": [email],
-            "subject": "Confirme ton compte EmoTrack",
-            "html": html_body,
-        }
+        if response.status_code in [200, 201, 202]:
+            print(f"[BREVO] Email de confirmation envoyé à {email}.")
+            return True
 
-        email_response = resend.Emails.send(params)
-
-        print(f"[MAIL] Email envoyé via Resend : {email_response}")
-        return True
-
-    except Exception as e:
-        print(f"[MAIL] Erreur Resend : {repr(e)}")
+        print(f"[BREVO] Erreur API status={response.status_code} body={response.text}")
         return False
+
+    except requests.RequestException as e:
+        print(f"[BREVO] Erreur réseau : {repr(e)}")
+        return False
+
 
 # ============================================================
 # SEUILS DU MODE ALERTE
