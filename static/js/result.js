@@ -371,10 +371,10 @@
                 const sources = alertsData.class_sources || [];
                 const reasons = [];
                 if (sources.includes("class_snapshot")) {
-                    reasons.push("plus de 50% de la classe démotivée au dernier QCM");
+                    reasons.push(`plus de ${seuilClasse}% de la classe démotivée au dernier QCM`);
                 }
                 if (sources.includes("class_accumulation")) {
-                    reasons.push("plus de 40% des étudiants en alerte individuelle");
+                    reasons.push(`plus de ${seuilClasse}% des étudiants en alerte individuelle`);
                 }
                 reasonEl.innerText = reasons.length ? " — " + reasons.join(" et ") : "";
             }
