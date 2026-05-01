@@ -488,7 +488,6 @@ def build_session_average_data(session_id):
             "nb_qcm":            len(qcm_indiv),
             "nb_webcam":         len(webcam_indiv)
         })
-        print(f"DEBUG individual: {individuals[-1]}") 
 
     return {
         "moyenne_subjective": moyenne_subjective,
