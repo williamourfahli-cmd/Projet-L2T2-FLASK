@@ -126,6 +126,12 @@ class Session(db.Model):
     # Mode d'affichage des résultats (graph, moyenne, alerte)
     mode_affichage = db.Column(db.String(50), nullable=False)
 
+    # Seuils du mode alertes (paramétrables par le professeur)
+    # Stockés entre 0 et 1 (ex: 0.60 = 60%)
+    # Valeurs par défaut : 60% individuel, 50% classe
+    seuil_individuel = db.Column(db.Float, nullable=False, default=0.60)
+    seuil_classe     = db.Column(db.Float, nullable=False, default=0.50)
+
     # Bool montrant si la session est encore active
     is_active = db.Column(db.Boolean, default=True, nullable=False)
 
