@@ -398,7 +398,7 @@
         const e = emotion.toLowerCase();
     
         // ── QCM ──────────────────────────────────────────────────
-        if (["demotiv", "démotiv"].some(v => e.includes(v)))                        return "#ef4444"; // rouge  — Démotivé
+        if (["demotiv", "démotiv"].some(v => e.includes(v)))             return "#ef4444"; // rouge  — Démotivé
         if (["motiv"].some(v => e.includes(v)))                          return "#22c55e"; // vert   — Motivé
         if (["neutre", "neutral"].some(v => e.includes(v)))              return "#94a3b8"; // gris   — Neutre
         if (["ennuy"].some(v => e.includes(v)))                          return "#eab308"; // jaune  — Ennuyé
