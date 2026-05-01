@@ -25,7 +25,7 @@ import requests
 import smtplib
 import ssl
 from email.message import EmailMessage
-
+import resend
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
