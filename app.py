@@ -1393,7 +1393,9 @@ def create_session():
         date_debut=datetime.now(timezone.utc),
         frequence_questionnaire=freq_q,
         frequence_webcam=freq_w,
-        mode_affichage=mode
+        mode_affichage=mode,
+        seuil_individuel = seuil_individuel,
+        seuil_classe = seuil_classe
     )
 
     db.session.add(new_session)
