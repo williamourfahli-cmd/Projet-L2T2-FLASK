@@ -22,6 +22,34 @@ from collections import Counter # Counter permet de compter des occurrences dans
 
 from zoneinfo import ZoneInfo
 import requests
+
+# ============================================================
+# INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
+# ============================================================
+
+app = Flask(__name__)
+
+# Récupération de l'URL Render (Variable d'environnement)
+uri = os.environ.get("DATABASE_URL")
+
+if uri:
+    # Correction indispensable du dialecte pour PostgreSQL
+    if uri.startswith("postgres://"):
+        uri = uri.replace("postgres://", "postgresql://", 1)
+        
+    # Forcer le chiffrement SSL exigé par Render
+    if "sslmode" not in uri:
+        if "?" in uri:
+            uri += "&sslmode=require"
+        else:
+            uri += "?sslmode=require"
+            
+    app.config["SQLALCHEMY_DATABASE_URI"] = uri
+else:
+    # Fallback sur SQLite pour vos tests en local
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
