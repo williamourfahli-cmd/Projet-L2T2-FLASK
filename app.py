@@ -1013,16 +1013,14 @@ def register():
             )
             mail.send(msg)
 
-            #Enregistre en base de données
             db.session.add(user)
             db.session.commit()
             flash("Inscription réussie ! Vérifie ta boîte mail.", "success")
             return redirect(url_for("login"))
 
-        
-         except Exception as e:
+        except Exception as e:
             print(f"[REGISTER] Erreur envoi email : {e}")
-            # On crée quand même le compte même si l'email échoue
+
             try:
                 db.session.add(user)
                 db.session.commit()
@@ -1031,7 +1029,7 @@ def register():
                 db.session.rollback()
                 flash("Erreur lors de la création du compte. Réessaie.", "error")
                 return render_template("register.html")
- 
+
             flash("Compte créé mais email de confirmation non envoyé. Contacte un administrateur.", "warning")
             return redirect(url_for("login"))
  
