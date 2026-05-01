@@ -602,62 +602,41 @@ def generate_session_code():
 
 def send_confirmation_email(email, first_name, confirm_url):
     """
-    Envoie l'email de confirmation avec smtplib.
+    Envoie l'email de confirmation via l'API Resend.
 
-    Cette fonction remplace mail.send(msg) afin de mieux contrôler
-    le timeout et éviter les blocages sur Render.
-
-    Returns:
-        bool: True si l'email est envoyé, False sinon
+    Cette solution utilise HTTPS au lieu de SMTP.
+    Elle fonctionne donc mieux sur Render Free.
     """
 
-    mail_server = app.config.get("MAIL_SERVER")
-    mail_port = app.config.get("MAIL_PORT")
-    mail_username = app.config.get("MAIL_USERNAME")
-    mail_password = app.config.get("MAIL_PASSWORD")
-    mail_sender = app.config.get("MAIL_DEFAULT_SENDER")
-    mail_timeout = app.config.get("MAIL_TIMEOUT", 8)
+    api_key = os.environ.get("RESEND_API_KEY")
 
-    if not mail_server or not mail_port or not mail_username or not mail_password:
-        print("[MAIL] Configuration email incomplète.")
+    if not api_key:
+        print("[MAIL] RESEND_API_KEY manquante.")
         return False
 
     try:
+        resend.api_key = api_key
+
         html_body = render_template(
             "email_confirmation.html",
             first_name=first_name,
             confirm_url=confirm_url
         )
 
-        text_body = (
-            f"Bonjour {first_name},\n\n"
-            "Merci de confirmer ton compte EmoTrack en cliquant sur le lien suivant :\n"
-            f"{confirm_url}\n\n"
-            "Si tu n'es pas à l'origine de cette inscription, ignore ce message."
-        )
+        params = {
+            "from": "EmoTrack <onboarding@resend.dev>",
+            "to": [email],
+            "subject": "Confirme ton compte EmoTrack",
+            "html": html_body,
+        }
 
-        msg = EmailMessage()
-        msg["Subject"] = "Confirme ton compte EmoTrack"
-        msg["From"] = mail_sender
-        msg["To"] = email
+        email_response = resend.Emails.send(params)
 
-        msg.set_content(text_body)
-        msg.add_alternative(html_body, subtype="html")
-
-        context = ssl.create_default_context()
-
-        with smtplib.SMTP(mail_server, mail_port, timeout=mail_timeout) as smtp:
-            smtp.ehlo()
-            smtp.starttls(context=context)
-            smtp.ehlo()
-            smtp.login(mail_username, mail_password)
-            smtp.send_message(msg)
-
-        print(f"[MAIL] Email de confirmation envoyé à {email}")
+        print(f"[MAIL] Email envoyé via Resend : {email_response}")
         return True
 
     except Exception as e:
-        print(f"[MAIL] Erreur envoi email : {repr(e)}")
+        print(f"[MAIL] Erreur Resend : {repr(e)}")
         return False
 
 # ============================================================
