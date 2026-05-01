@@ -177,29 +177,38 @@
             </div>
         </div>
 
-        <div class="alert-thresholds">
+    <div class="alert-thresholds">
 
-            <div class="alert-threshold-item individual">
-                <span class="alert-threshold-label">Individuel · QCM</span>
-                <span class="alert-threshold-value">60% réponses négatives</span>
-            </div>
-
-            <div class="alert-threshold-item individual">
-                <span class="alert-threshold-label">Individuel · Webcam</span>
-                <span class="alert-threshold-value">60% émotions négatives</span>
-            </div>
-
-            <div class="alert-threshold-item class">
-                <span class="alert-threshold-label">Classe · Snapshot QCM</span>
-                <span class="alert-threshold-value">50% classe démotivée</span>
-            </div>
-
-            <div class="alert-threshold-item class">
-                <span class="alert-threshold-label">Classe · Accumulation</span>
-                <span class="alert-threshold-value">40% étudiants en alerte</span>
-            </div>
-
+        <div class="alert-threshold-item individual">
+            <span class="alert-threshold-label">Individuel · QCM</span>
+            <span class="alert-threshold-value">
+                {{ (session_obj.seuil_individuel * 100) | round | int }}% réponses négatives
+            </span>
         </div>
+
+        <div class="alert-threshold-item individual">
+            <span class="alert-threshold-label">Individuel · Webcam</span>
+            <span class="alert-threshold-value">
+                {{ (session_obj.seuil_individuel * 100) | round | int }}% émotions négatives
+            </span>
+        </div>
+
+        <div class="alert-threshold-item class">
+            <span class="alert-threshold-label">Classe · Snapshot QCM</span>
+            <span class="alert-threshold-value">
+                {{ (session_obj.seuil_classe * 100) | round | int }}% classe démotivée
+            </span>
+        </div>
+
+        <div class="alert-threshold-item class">
+            <span class="alert-threshold-label">Classe · Accumulation</span>
+            <span class="alert-threshold-value">
+                {{ (session_obj.seuil_classe * 100) | round | int }}% étudiants en alerte
+            </span>
+        </div>
+
+    </div>
+
     </section>
     {% endif %}
 
