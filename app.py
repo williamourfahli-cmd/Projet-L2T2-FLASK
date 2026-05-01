@@ -41,6 +41,14 @@ else:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 300,
+    "pool_timeout": 30,
+    "pool_size": 5,
+    "max_overflow": 2,
+}
 # Utilisation d'une variable d'env pour la sécurité (Cybersécurité)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-key-a-changer-en-prod")
 app.config["SESSION_COOKIE_SAMESITE"] = 'Lax'
