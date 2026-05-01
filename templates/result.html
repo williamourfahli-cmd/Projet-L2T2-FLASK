@@ -15,6 +15,15 @@
 -->
 
 <div class="container results-page">
+    <div class="container results-page">
+
+    <!-- Données de session pour le JS -->
+    <div id="sessionData"
+         data-seuil-individuel="{{ (session_obj.seuil_individuel * 100) | round | int }}"
+         data-seuil-classe="{{ (session_obj.seuil_classe * 100) | round | int }}"
+         style="display:none;">
+    </div>
+
      <!-- ================= BANNIÈRE ALERTE DE CLASSE ================= -->
     <!--
         Uniquement visible si le mode "alertes" est actif.
