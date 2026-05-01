@@ -156,7 +156,7 @@ def normalize_qcm_emotion_label(raw_emotion):
     emotion = raw_emotion.strip().lower()
 
     mapping = {
-        "motivé": "Motivé",
+        "motive": "Motivé",
         "neutre": "Neutre",
         "ennuye": "Ennuyé",
         "stresse": "Stressé",
@@ -210,7 +210,7 @@ def qcm_engagement_score(response):
         float: score d'engagement sur 100
     """
     base_scores = {
-        "motivé": 100,
+        "motive": 100,
         "neutre": 60,
         "ennuye": 30,
         "stresse": 40,
