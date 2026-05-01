@@ -56,6 +56,34 @@
                     </label>
                 </div>
 
+                <!-- Seuils paramétrables — visibles uniquement si "Alertes" est coché -->
+                <div id="alertes-seuils" class="alertes-seuils" style="display:none;">
+
+                    <div class="seuil-group">
+                        <label class="seuil-label">
+                            Seuil individuel :
+                            <span id="val-seuil-individuel">60</span>%
+                        </label>
+                        <input type="range" name="seuil_individuel" id="seuil-individuel"
+                               min="10" max="90" step="5" value="60"
+                               class="seuil-slider">
+                        <p class="seuil-hint">Alerte si un étudiant dépasse ce ratio de réponses négatives (QCM + webcam)</p>
+                    </div>
+
+                    <div class="seuil-group">
+                        <label class="seuil-label">
+                            Seuil classe :
+                            <span id="val-seuil-classe">50</span>%
+                        </label>
+                        <input type="range" name="seuil_classe" id="seuil-classe"
+                               min="10" max="90" step="5" value="50"
+                               class="seuil-slider">
+                        <p class="seuil-hint">Alerte si ce pourcentage de la classe est en difficulté</p>
+                    </div>
+
+                </div>
+
+                
                 <button class="btn success">Créer la session</button>
             </form>
         </div>
