@@ -1101,4 +1101,48 @@ input:checked + .slider:before {
     font-weight: 500;
     color: var(--text);
 }
+/* =================================================*/
+/* CHOIX SEUILS ALERTES (Professeur dashboard)    */
+/* ================================================ */
+
+.alertes-seuils {
+    margin-top: 14px;
+    padding: 14px 16px;
+    background: rgba(124,58,237,0.06);
+    border: 1px solid rgba(124,58,237,0.2);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.seuil-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.seuil-label {
+    font-size: 0.9rem;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.seuil-label span {
+    color: #a78bfa;
+    font-weight: bold;
+}
+
+.seuil-slider {
+    width: 100%;
+    accent-color: #7c3aed;
+}
+
+.seuil-hint {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin: 0;
+}
+
+
 
