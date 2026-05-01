@@ -1361,6 +1361,18 @@ def create_session():
     freq_q = int(request.form["freq_questionnaire"])
     freq_w = int(request.form["freq_webcam"])
     selected_modes = request.form.getlist("modes_affichage")
+    
+    # Seuils paramétrables — uniquement si le mode alertes est coché
+    seuil_individuel = 0.60
+    seuil_classe     = 0.50
+    if "alertes" in selected_modes:
+        try:
+            seuil_individuel = int(request.form.get("seuil_individuel", 60)) / 100
+            seuil_classe     = int(request.form.get("seuil_classe", 50)) / 100
+            seuil_individuel = max(0.10, min(0.90, seuil_individuel))
+            seuil_classe     = max(0.10, min(0.90, seuil_classe))
+        except (ValueError, TypeError):
+            pass
 
     if freq_q <= 0 or freq_w <= 0:
         flash("Valeurs invalides.", "error")
