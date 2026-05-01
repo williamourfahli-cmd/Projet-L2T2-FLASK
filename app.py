@@ -672,23 +672,17 @@ def send_confirmation_email(email, first_name, confirm_url):
 # SEUILS DU MODE ALERTE
 # ============================================================
 
-SEUIL_INDIVIDUEL_QCM      = 0.60   # Si + de 60% des réponses des QCM sont négatives (démotivé/ennuyé)
-SEUIL_INDIVIDUEL_WEBCAM   = 0.60   # Si + de 60% des analyses négatives (angry/fear)
-SEUIL_CLASSE_SNAPSHOT     = 0.50   # Si plus de 50% des classe démotivée au dernier QCM collectif
-SEUIL_CLASSE_ACCUMULATION = 0.40   # SI plus de 40% des  étudiants sont en alerte individuelle
-
 # Émotions QCM négatives (en base, brutes)
 QCM_EMOTIONS_NEGATIVES = {"demotive", "ennuye"}
 
 # Émotions DeepFace négatives
 WEBCAM_EMOTIONS_NEGATIVES = {"angry", "fear"}
 
-
 # ============================================================
 # FONCTIONS DE DÉTECTION
 # ============================================================
 
-def check_individual_alert_qcm(session_id, user_id):
+def check_individual_alert_qcm(session_id, user_id, seuil=0.60):
     """
     Vérifie si un étudiant dépasse le seuil QCM individuel.
 
@@ -698,6 +692,8 @@ def check_individual_alert_qcm(session_id, user_id):
     Au lieu de compter 1 réponse négative = 1 point, chaque réponse
     négative vaut (slider / 5). Ainsi une réponse "démotivé" à intensité
     5 pèse 5x plus qu'une à intensité 1.
+
+    Si le ratio dépasse le seuil par fixé par le professeur => alerte
 
     Returns:
         tuple (bool, float, str) : (alerte?, ratio, émotion dominante)
@@ -758,14 +754,14 @@ def check_individual_alert_qcm(session_id, user_id):
         dominant = counts.most_common(1)[0][0] if counts else None
 
     #log explicite de l'alerte
-    print(f"[ALERT QCM] user={user_id} → ratio_pondéré={round(ratio, 2)}, dominant={dominant}, alerte={ratio >= SEUIL_INDIVIDUEL_QCM}")
+    print(f"[ALERT QCM] user={user_id} → ratio_pondéré={round(ratio, 2)}, dominant={dominant}, alerte={ratio >= seuil}")
 
     #Retour
-    return ratio >= SEUIL_INDIVIDUEL_QCM, round(ratio, 2), dominant
+    return ratio >= seuil, round(ratio, 2), dominant
     
 
 
-def check_individual_alert_webcam(session_id, user_id):
+def check_individual_alert_webcam(session_id, user_id, seuil=0.60):
     """
     Vérifie si un étudiant dépasse le seuil webcam individuel.
 
@@ -799,10 +795,10 @@ def check_individual_alert_webcam(session_id, user_id):
         )
         dominant = counts.most_common(1)[0][0] if counts else None
 
-    return ratio >= SEUIL_INDIVIDUEL_WEBCAM, round(ratio, 2), dominant
+    return ratio >= seuil, round(ratio, 2), dominant
 
 
-def check_class_snapshot_alert(session_id):
+def check_class_snapshot_alert(session_id, seuil=0.50):
     """
     Vérifie si le dernier QCM collectif dépasse le seuil de classe.
  
@@ -856,8 +852,8 @@ def check_class_snapshot_alert(session_id):
         return False, 0.0
  
     ratio = poids_negatifs / poids_total
-    print(f"[ALERT CLASSE SNAPSHOT] occurrence={last_occ}, {len(responses)} réponse(s), ratio_pondéré={round(ratio, 2)}, alerte={ratio >= SEUIL_CLASSE_SNAPSHOT}")
-    return ratio >= SEUIL_CLASSE_SNAPSHOT, round(ratio, 2)
+    print(f"[ALERT CLASSE SNAPSHOT] occurrence={last_occ}, {len(responses)} réponse(s), ratio_pondéré={round(ratio, 2)}, alerte={ratio >= seuil}")
+    return ratio >= seuil, round(ratio, 2)
 
 
 def save_alert(session_id, level, source, user_id=None, emotion=None, ratio=None):
@@ -905,6 +901,7 @@ def compute_alerts(session_id):
     Calcule et persiste toutes les alertes actives pour une session.
 
     Appelée uniquement si le mode "alertes" est sélectionné.
+    Utilise les seuils paramétrés par le professeur à la création de la session.
 
     Returns:
         dict :
@@ -920,6 +917,13 @@ def compute_alerts(session_id):
         "individual_alerts": []
     }
 
+    # Récupère la session 
+    session_obj = Session.query.get(session_id)
+
+    # Récupère les seuils paramétrés pour cette session
+    seuil_ind    = session_obj.seuil_individuel if session_obj else 0.60
+    seuil_classe = session_obj.seuil_classe     if session_obj else 0.50
+
     participations = Participation.query.filter_by(session_id=session_id).all()
     students_in_alert_count = 0
 
@@ -933,7 +937,7 @@ def compute_alerts(session_id):
 
         # QCM
         triggered_qcm, ratio_qcm, emotion_qcm = check_individual_alert_qcm(
-            session_id, p.student_id
+            session_id, p.student_id, seuil_ind
         )
         if triggered_qcm:
             save_alert(
@@ -952,7 +956,7 @@ def compute_alerts(session_id):
 
         # Webcam
         triggered_webcam, ratio_webcam, emotion_webcam = check_individual_alert_webcam(
-            session_id, p.student_id
+            session_id, p.student_id, seuil_ind
         )
         if triggered_webcam:
             save_alert(
@@ -980,7 +984,7 @@ def compute_alerts(session_id):
             })
 
     # --- Alerte de classe : snapshot QCM ---
-    triggered_snapshot, ratio_snapshot = check_class_snapshot_alert(session_id)
+    triggered_snapshot, ratio_snapshot = check_class_snapshot_alert(session_id, seuil_classe)
     if triggered_snapshot:
         save_alert(
             session_id=session_id,
@@ -994,7 +998,7 @@ def compute_alerts(session_id):
     # --- Alerte de classe : accumulation individuelle ---
     if participations:
         ratio_accum = students_in_alert_count / len(participations)
-        if ratio_accum >= SEUIL_CLASSE_ACCUMULATION:
+        if ratio_accum >= seuil_classe:
             save_alert(
                 session_id=session_id,
                 level="class",
@@ -1628,7 +1632,7 @@ def submit_qcm():
 
     # Validation des émotions autorisées
     allowed_emotions = [
-        "motivé", "neutre", "ennuye", "stresse", "demotive"
+        "motive", "neutre", "ennuye", "stresse", "demotive"
     ]
 
     if emotion not in allowed_emotions:
