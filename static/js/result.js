@@ -6,6 +6,10 @@
 
     const dataEl = document.getElementById("resultsPageData");
 
+    const sessionDataEl   = document.getElementById("sessionData");
+    const seuilIndividuel = sessionDataEl ? parseInt(sessionDataEl.getAttribute("data-seuil-individuel")) : 60;
+    const seuilClasse     = sessionDataEl ? parseInt(sessionDataEl.getAttribute("data-seuil-classe")) : 50;
+
     /**
      * Lit une valeur JSON stockée dans un attribut data-*
      * et la convertit en tableau JavaScript.
