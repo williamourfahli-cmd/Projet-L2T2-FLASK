@@ -940,18 +940,13 @@ def register():
     """
     Gère l'inscription d'un nouvel utilisateur.
 
-    Méthode GET :
-        - Affiche le formulaire d'inscription
-
-    Méthode POST :
-        - Récupère les données du formulaire
-        - Valide les champs
-        - Vérifie l'unicité de l'email
-        - Hash le mot de passe
-        - Crée un utilisateur en base via SQLAlchemy
-
-    Returns:
-        HTML ou redirection
+    Fonctionnement :
+    - vérifie les champs du formulaire
+    - valide le format de l'email
+    - vérifie que l'email n'existe pas déjà
+    - crée le compte utilisateur en base
+    - tente d'envoyer un email de confirmation
+    - évite de faire planter l'application si l'envoi du mail échoue
     """
 
     if request.method == "POST":
@@ -962,22 +957,23 @@ def register():
         password = request.form.get("password", "")
         role_input = request.form.get("role")
 
-        # Validation basique
+        # Vérification des champs obligatoires
         if not all([first_name, last_name, email, password, role_input]):
             flash("Tous les champs sont obligatoires.", "error")
             return render_template("register.html")
 
+        # Vérification du mot de passe
         if len(password) < 8:
             flash("Mot de passe trop court.", "error")
             return render_template("register.html")
 
-        # Validation email
+        # Validation du format email
         is_valid, email, error = validate_email(email)
         if not is_valid:
             flash(error, "error")
             return render_template("register.html")
 
-        # Validation rôle
+        # Validation du rôle
         if role_input == "student":
             role = UserRole.STUDENT
         elif role_input == "professor":
@@ -986,12 +982,19 @@ def register():
             flash("Rôle invalide.", "error")
             return render_template("register.html")
 
-        # Vérif doublon
-        if User.query.filter_by(email=email).first():
+        # Vérification doublon email
+        try:
+            existing_user = User.query.filter_by(email=email).first()
+        except Exception as e:
+            print(f"[REGISTER] Erreur vérification email existant : {e}")
+            flash("Erreur temporaire lors de la vérification du compte.", "error")
+            return render_template("register.html")
+
+        if existing_user:
             flash("Un compte existe déjà.", "warning")
             return redirect(url_for("login"))
 
-        # Création user
+        # Création de l'utilisateur
         token = secrets.token_urlsafe(32)
 
         user = User(
@@ -1004,43 +1007,54 @@ def register():
             verification_token=token
         )
 
-        
+        # Enregistrement du compte en base AVANT l'envoi du mail
+        try:
+            db.session.add(user)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[REGISTER] Erreur création compte : {e}")
+            flash("Erreur lors de la création du compte. Réessaie.", "error")
+            return render_template("register.html")
 
-        # Envoi email de confirmation
+        # Création du lien de confirmation
         confirm_url = url_for("confirm_email", token=token, _external=True)
 
+        # Si la configuration mail est absente, on ne bloque pas l'inscription
+        if not app.config.get("MAIL_USERNAME") or not app.config.get("MAIL_PASSWORD"):
+            print("[MAIL] Configuration email absente.")
+            flash(
+                "Compte créé, mais email de confirmation non envoyé. Contacte un administrateur.",
+                "warning"
+            )
+            return redirect(url_for("login"))
+
+        # Envoi du mail de confirmation
         try:
             msg = Message(
                 subject="Confirme ton compte",
                 recipients=[email]
             )
+
             msg.html = render_template(
                 "email_confirmation.html",
                 first_name=first_name,
                 confirm_url=confirm_url
             )
+
             mail.send(msg)
 
-            db.session.add(user)
-            db.session.commit()
             flash("Inscription réussie ! Vérifie ta boîte mail.", "success")
             return redirect(url_for("login"))
 
         except Exception as e:
-            print(f"[REGISTER] Erreur envoi email : {e}")
-
-            try:
-                db.session.add(user)
-                db.session.commit()
-            except Exception as db_error:
-                print(f"[REGISTER] Erreur base de données : {db_error}")
-                db.session.rollback()
-                flash("Erreur lors de la création du compte. Réessaie.", "error")
-                return render_template("register.html")
-
-            flash("Compte créé mais email de confirmation non envoyé. Contacte un administrateur.", "warning")
+            print(f"[MAIL] Erreur envoi email : {e}")
+            flash(
+                "Compte créé, mais email de confirmation non envoyé. Contacte un administrateur.",
+                "warning"
+            )
             return redirect(url_for("login"))
- 
+
     return render_template("register.html")
 
 # ============================================================
