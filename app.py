@@ -7,6 +7,11 @@ import re
 import random
 import string
 import secrets
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement dès le début
+load_dotenv()
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -26,6 +31,7 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 import resend
+from chatbot import get_chatbot_response
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
@@ -2269,7 +2275,28 @@ def session_alerts(session_id):
         alerts=alerts_enriched
     )
 
-# FIN GESTION DES ALERTES ========================================================================================
+# ============================================================
+# CHATBOT EMO-TRACK
+# ============================================================
+
+@app.route("/chatbot", methods=["POST"])
+def chat():
+    """
+    Route pour le chatbot assistant.
+    Reçoit un message utilisateur et retourne la réponse de Groq.
+    """
+    data = request.get_json()
+    user_message = data.get("message")
+    history = data.get("history", []) # Liste de {'role': 'user/assistant', 'content': '...'}
+
+    if not user_message:
+        return jsonify({"error": "Message vide."}), 400
+
+    response = get_chatbot_response(user_message, history)
+    
+    return jsonify({"reply": response})
+
+# FIN CHATBOT ========================================================================================
         
 # ============================================================
 # LANCEMENT

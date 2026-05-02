@@ -6,3 +6,5 @@ flask-mail
 requests
 numpy
 resend
+openai
+python-dotenv
