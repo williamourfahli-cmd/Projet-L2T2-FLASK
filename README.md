@@ -7,9 +7,8 @@ Mini-projet Flask prêt à lancer pour :
 - vérification qu'un email n'existe pas déjà,
 - connexion et redirection vers la bonne interface.
 
-## Règles email
-- Étudiant : `@etu.u-paris.fr`
-- Professeur : `@u-paris.fr`
+## Choix du rôle (étudiant/professeur)
+L'utilisateur choisit lui même son rôle grâce à un bouton switch
 
 ## Fichiers
 - `app.py` : application Flask
