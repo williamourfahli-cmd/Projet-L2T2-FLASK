@@ -17,7 +17,23 @@
         <input id="email" name="email" type="email" placeholder="Adresse email" required>
 
         <label for="password">Mot de passe</label>
-        <input id="password" name="password" type="password" placeholder="Mot de passe" required>
+        <div class="password-wrapper">
+            <input 
+                id="password" 
+                name="password" 
+                type="password" 
+                placeholder="Mot de passe" 
+                required
+            >
+        
+            <button 
+                type="button" 
+                class="toggle-password"
+                onclick="togglePassword('password', this)"
+            >
+                Voir
+            </button>
+        </div>
 
         <button class="btn success" type="submit">Se connecter</button>
     </form>
