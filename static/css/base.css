@@ -1145,4 +1145,29 @@ input:checked + .slider:before {
 }
 
 
+/*-----------Voir le mdp--------*/
+.password-wrapper {
+    position: relative;
+    width: 100%;
+}
 
+.password-wrapper input {
+    width: 100%;
+    padding-right: 80px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #7c3aed;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.toggle-password:hover {
+    text-decoration: underline;
+}
