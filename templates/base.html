@@ -12,10 +12,48 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 
     <!-- CSS spécifique -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     {% block styles %}{% endblock %}
 </head>
 
 <body>
+
+    <!-- ============================= -->
+    <!-- CHATBOT EMO-TRACK -->
+    <!-- ============================= -->
+    <button class="chatbot-toggler">
+        <span>💬</span>
+    </button>
+    <div class="chatbot-container">
+        <header class="chatbot-header">
+            <div class="header-info">
+                <div class="bot-avatar">🧠</div>
+                <div>
+                    <h2>EmoTrack IA</h2>
+                    <p>En ligne • Assistant intelligent</p>
+                </div>
+            </div>
+            <span class="close-btn">×</span>
+        </header>
+        <ul class="chatbox">
+            <li class="chat incoming">
+                <p>
+                    {% if session.get('first_name') %}
+                        Bonjour {{ session.get('first_name') }} ! 👋
+                    {% else %}
+                        Bonjour ! 👋
+                    {% endif %}
+                    <br>Je suis votre assistant EmoTrack. Comment puis-je vous aider ?
+                </p>
+            </li>
+        </ul>
+        <div class="chat-input">
+            <textarea placeholder="Posez votre question..." spellcheck="false" required></textarea>
+            <span id="send-btn">➔</span>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
 
     <!-- CONTENU DES PAGES -->
     {% block body %}{% endblock %}
