@@ -38,7 +38,24 @@
         <input id="email_confirm" name="email_confirm" type="email" placeholder="Confirmer votre email" required>
 
         <label for="password">Mot de passe</label>
-        <input id="password" name="password" type="password" minlength="8" placeholder="Minimum 8 caractères" required>
+        <div class="password-wrapper">
+            <input 
+                id="password" 
+                name="password" 
+                type="password" 
+                minlength="8" 
+                placeholder="Minimum 8 caractères" 
+                required
+            >
+        
+            <button 
+                type="button" 
+                class="toggle-password"
+                onclick="togglePassword('password', this)"
+            >
+                Voir
+            </button>
+        </div>
 
         <!-- Bouton switch pour séléctionner son role -->
         
