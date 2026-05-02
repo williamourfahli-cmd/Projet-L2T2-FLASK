@@ -16,7 +16,7 @@ from models import db, User, Session, Participation, UserRole, QCMResponse, Webc
 import base64
 import numpy as np
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from collections import Counter # Counter permet de compter des occurrences dans une liste
 # type de données du module collection, module qui regroupe des  types de données qui ne sont pas automatiquement inclus
 
@@ -858,8 +858,10 @@ def check_class_snapshot_alert(session_id, seuil=0.50):
 
 def save_alert(session_id, level, source, user_id=None, emotion=None, ratio=None):
     """
-    Sauvegarde une alerte en base, avec fenêtre anti-doublon de 60 secondes :
-    si la même alerte a déjà été sauvegardée il y a moins de 60 secondes, on ne la sauvegarde pas à nouveau.
+    Sauvegarde une alerte en base, avec fenêtre anti-doublon :
+    La fenêtre est basée sur la fréquence de la source concernée : 
+     - alerte individuelle QCM et alerte de classe => fréquence questionnaire
+     - alerte individuelle webcam => frequence_webcam
 
     Args:
         session_id (int)  : session concernée
@@ -869,21 +871,29 @@ def save_alert(session_id, level, source, user_id=None, emotion=None, ratio=None
         emotion    (str)  : émotion déclenchante
         ratio      (float): ratio mesuré
     """
-    from datetime import timedelta
-
-    one_minute_ago = datetime.now(timezone.utc) - timedelta(seconds=60)
-
+    # from datetime import timedelta
+    session_obj = Session.query.get(session_id)
+ 
+    if source == "webcam":
+        freq = session_obj.frequence_webcam if session_obj else 60
+    else:
+        freq = session_obj.frequence_questionnaire if session_obj else 60
+ 
+    fenetre = max(60, min(600, freq))
+    cutoff  = datetime.now(timezone.utc) - timedelta(seconds=fenetre)
+ 
     existing = Alert.query.filter(
         Alert.session_id == session_id,
-        Alert.level == level,
-        Alert.source == source,
-        Alert.user_id == user_id,
-        Alert.triggered_at >= one_minute_ago
+        Alert.level      == level,
+        Alert.source     == source,
+        Alert.user_id    == user_id,
+        Alert.triggered_at >= cutoff
     ).first()
 
+    #Doublon récent, on registre pas 
     if existing:
-        return  # doublon récent, on n'insère pas
-
+        return 
+ 
     alert = Alert(
         session_id=session_id,
         user_id=user_id,
@@ -894,7 +904,6 @@ def save_alert(session_id, level, source, user_id=None, emotion=None, ratio=None
     )
     db.session.add(alert)
     db.session.commit()
-
 
 def compute_alerts(session_id):
     """
