@@ -673,7 +673,7 @@ def send_confirmation_email(email, first_name, confirm_url):
 # ============================================================
 
 # Émotions QCM négatives (en base, brutes)
-QCM_EMOTIONS_NEGATIVES = {"demotive", "ennuye"}
+QCM_EMOTIONS_NEGATIVES = {"demotive", "ennuye","stresse"}
 
 # Émotions DeepFace négatives
 WEBCAM_EMOTIONS_NEGATIVES = {"angry", "fear"}
