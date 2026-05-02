@@ -59,6 +59,19 @@
     const alertBanner   = document.getElementById("class-alert-banner"); // cherche si #class-alert-banner existe dans result.html. Si oui alertModeActive = true
     const popupContainer = document.getElementById("alert-popups-container"); // de même pour les conteneur des alert pop up 
     const alertModeActive = !!alertBanner;
+ 
+    // Mémorise si le prof a fermé la bannière manuellement
+    // Remis à false uniquement quand l'alerte disparaît puis revient
+    let bannerDismissed  = false;
+    let lastBannerState  = false;
+ 
+    // Intercepte le bouton X (fermer) de la bannière
+    const bannerCloseBtn = document.querySelector(".alert-banner-close");
+    if (bannerCloseBtn) {
+        bannerCloseBtn.addEventListener("click", () => {
+            bannerDismissed = true;
+        });
+    }
     
 
     /* ============================================================
@@ -78,6 +91,7 @@
     ============================================================================================================ */
 
     const shownAlerts = new Set();
+    window._shownAlerts = shownAlerts; // Si les messages pop up sont fermés
 
     
     /* ============================================================
@@ -364,8 +378,17 @@
 
     function updateClassAlertBanner(alertsData) {
         if (!alertBanner) return;
-
-        if (alertsData && alertsData.class_alert) {
+ 
+        const isActive = !!(alertsData && alertsData.class_alert);
+ 
+        // Si l'alerte vient de disparaître → reset bannerDismissed
+        // pour qu'elle puisse réapparaître au prochain déclenchement
+        if (!isActive && lastBannerState) {
+            bannerDismissed = false;
+        }
+        lastBannerState = isActive;
+ 
+        if (isActive) {
             const reasonEl = document.getElementById("class-alert-reason");
             if (reasonEl) {
                 const sources = alertsData.class_sources || [];
@@ -378,12 +401,14 @@
                 }
                 reasonEl.innerText = reasons.length ? " — " + reasons.join(" et ") : "";
             }
-            alertBanner.style.display = "block";
+            // N'affiche que si le prof n'a pas fermé manuellement
+            if (!bannerDismissed) {
+                alertBanner.style.display = "block";
+            }
         } else {
-            // Condition non remplie : masquage automatique
             alertBanner.style.display = "none";
         }
-    }
+   
 
     /* ============================================================
        12. MISE À JOUR DES MOYENNES ÉMOTIONNELLES
@@ -511,8 +536,8 @@
        13. POPUP ALERTE INDIVIDUELLE
     ======================================================================================================================== */
 
-    function showIndividualAlertPopup(alertInfo) {
-    /*Crée un pop up en bas à droite pour un étudiant en alerte, avec son nom, la source (QCM/webcam), lémotion et le ratio
+    function showIndividualAlertPopup(alertInfo, key) {
+    /*Crée un pop up en bas à droite pour un étudiant en alerte, avec son nom, la source (QCM/webcam), l'émotion et le ratio
        Le pop up disparait automatiquement au bout de 12 secondes */
         if (!popupContainer) return;
 
@@ -533,6 +558,7 @@
 
         const popup = document.createElement("div");
         popup.className = "alert-popup";
+        popup.dataset.alertKey = key; // stocke la clé pour pouvoir la retirer de shownAlerts
         popup.innerHTML = `
             <div class="alert-popup-header">
                 <span class="alert-popup-title">⚠ Alerte individuelle</span>
@@ -577,7 +603,7 @@
 
             if (!shownAlerts.has(key)) {
                 shownAlerts.add(key);
-                showIndividualAlertPopup(alertInfo);
+                showIndividualAlertPopup(alertInfo, key);
             }
         }
 
