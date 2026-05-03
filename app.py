@@ -675,7 +675,7 @@ def send_confirmation_email(email, first_name, confirm_url):
 
 
 # ============================================================
-# SEUILS DU MODE ALERTE
+# DEFINITTION DES EMOTIONS "NEGATIVES"
 # ============================================================
 
 # Émotions QCM négatives (en base, brutes)
