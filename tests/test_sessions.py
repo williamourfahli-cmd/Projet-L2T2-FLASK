@@ -20,10 +20,26 @@ def create_and_login_prof(client, create_user):
 def create_and_login_student(client, create_user):
     create_user("student@test.com", role="student", verified=True)
     login(client, "student@test.com")
+    
 
+def setup_active_session(client, create_user):
+    """
+    Crée un prof, une session active et retourne l'id de la session.
+    """
+    create_and_login_prof(client, create_user)
+ 
+    client.post("/create_session", data={
+        "freq_questionnaire": 5,
+        "freq_webcam": 5,
+        "mode_affichage": "courbe"
+    })
+ 
+    with client.application.app_context():
+        return Session.query.first().id
+ 
 
 # =========================
-# TESTS
+# CREATE SESSION
 # =========================
 
 def test_create_session_success(client, create_user):
@@ -106,7 +122,9 @@ def test_create_session_all_modes(client, create_user):
         for mode in modes:
             assert mode in saved_modes
 
-
+#==================================
+#JOIN SESSION
+#===================================
 def test_join_session_success(client, create_user):
     """
     SCENARIO:
@@ -239,3 +257,81 @@ def test_join_session_inactive(client, create_user):
     with client.application.app_context():
         participation = Participation.query.first()
         assert participation is None
+
+# =========================
+# TESTS END SESSION
+# =========================
+def test_end_session_success(client, create_user):
+    """
+    ID: UT-APP-SESSION-008
+ 
+    SCENARIO:
+    Un professeur termine une session active.
+ 
+    EXPECTED:
+    - is_active passe à False
+    - date_fin est renseignée
+    - redirection vers le dashboard
+    """
+ 
+    session_id = setup_active_session(client, create_user)
+ 
+    response = client.post(f"/end_session/{session_id}")
+ 
+    assert response.status_code == 302
+ 
+    with client.application.app_context():
+        session_db = Session.query.get(session_id)
+        assert session_db.is_active is False
+        assert session_db.date_fin is not None
+ 
+ 
+def test_end_session_forbidden_student(client, create_user):
+    """
+    ID: UT-APP-SESSION-009
+ 
+    SCENARIO:
+    Un étudiant tente de terminer une session.
+ 
+    EXPECTED:
+    - Accès refusé
+    - Session reste active
+    """
+ 
+    session_id = setup_active_session(client, create_user)
+ 
+    client.get("/logout")
+ 
+    create_and_login_student(client, create_user)
+ 
+    client.post(f"/end_session/{session_id}")
+ 
+    with client.application.app_context():
+        session_db = Session.query.get(session_id)
+        assert session_db.is_active is True
+ 
+ 
+def test_end_session_not_logged_in(client, create_user):
+    """
+    ID: UT-APP-SESSION-010
+ 
+    SCENARIO:
+    Un utilisateur non connecté tente de terminer une session.
+ 
+    EXPECTED:
+    - Redirection vers /login
+    - Session reste active
+    """
+ 
+    session_id = setup_active_session(client, create_user)
+ 
+    client.get("/logout")
+ 
+    response = client.post(f"/end_session/{session_id}")
+ 
+    assert response.status_code == 302
+    assert "/login" in response.location
+ 
+    with client.application.app_context():
+        session_db = Session.query.get(session_id)
+        assert session_db.is_active is True
