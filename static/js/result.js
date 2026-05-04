@@ -4,109 +4,154 @@
        1. RÉCUPÉRATION DES DONNÉES INJECTÉES PAR FLASK
     ============================================================ */
 
+    // Élément HTML caché contenant les données initiales envoyées par Flask
     const dataEl = document.getElementById("resultsPageData");
 
-    const sessionDataEl   = document.getElementById("sessionData");
-    const seuilIndividuel = sessionDataEl ? parseInt(sessionDataEl.getAttribute("data-seuil-individuel")) : 60;
-    const seuilClasse     = sessionDataEl ? parseInt(sessionDataEl.getAttribute("data-seuil-classe")) : 50;
+    // Élément HTML caché contenant les seuils d'alerte de la session
+    const sessionDataEl = document.getElementById("sessionData");
+
+    // Récupère le seuil individuel depuis le HTML, sinon prend 60% par défaut
+    const seuilIndividuel = sessionDataEl
+        ? parseInt(sessionDataEl.getAttribute("data-seuil-individuel"))
+        : 60;
+
+    // Récupère le seuil de classe depuis le HTML, sinon prend 50% par défaut
+    const seuilClasse = sessionDataEl
+        ? parseInt(sessionDataEl.getAttribute("data-seuil-classe"))
+        : 50;
 
     /**
      * Lit une valeur JSON stockée dans un attribut data-*
      * et la convertit en tableau JavaScript.
+     *
+     * Exemple :
+     * data-engagement-labels='["10:00", "10:01"]'
+     * devient ["10:00", "10:01"] côté JavaScript.
      */
     function readJsonData(attrName) {
-        // Si l'élément n'existe pas, on quitte
+        // Si l'élément contenant les données n'existe pas, on retourne un tableau vide
         if (!dataEl) return [];
+
+        // Récupère la valeur brute de l'attribut demandé
         const raw = dataEl.getAttribute(attrName);
 
+        // Si l'attribut est absent ou vide, on retourne un tableau vide
         if (!raw) return [];
 
         try {
+            // Convertit la chaîne JSON en vraie valeur JavaScript
             return JSON.parse(raw);
         } catch (e) {
+            // En cas de problème de parsing, on évite de casser toute la page
             console.warn("Impossible de parser", attrName, e);
             return [];
         }
     }
 
-    // Données initiales
+    // Données initiales de la courbe d'engagement
     let engagementLabels = readJsonData("data-engagement-labels");
     let engagementValues = readJsonData("data-engagement-values");
 
+    // Données initiales du donut QCM
     let qcmEmotionLabels = readJsonData("data-qcm-emotion-labels");
     let qcmEmotionValues = readJsonData("data-qcm-emotion-values");
 
+    // Données initiales du donut webcam / DeepFace
     let webcamEmotionLabels = readJsonData("data-webcam-emotion-labels");
     let webcamEmotionValues = readJsonData("data-webcam-emotion-values");
+
 
     /* ============================================================
        2. RÉCUPÉRATION DE L'ID DE SESSION DEPUIS L'URL
     ============================================================ */
 
+    // Exemple d'URL : /session/12/results
+    // Après split("/") : ["", "session", "12", "results"]
     const pathParts = window.location.pathname.split("/");
     const sessionId = pathParts[2];
 
+    // Sans id de session, on ne peut pas appeler la route JSON des résultats
     if (!sessionId) {
         console.warn("Session ID introuvable dans l'URL");
         return;
     }
+
+
     /* ============================================================
        3. DÉTECTION DES MODES ACTIFS
     ============================================================ */
 
-    // On détecte si le mode alertes est actif côté DOM
-    // plutôt que de le lire depuis Flask pour éviter le couplage
-    const alertBanner   = document.getElementById("class-alert-banner"); // cherche si #class-alert-banner existe dans result.html. Si oui alertModeActive = true
-    const popupContainer = document.getElementById("alert-popups-container"); // de même pour les conteneur des alert pop up 
+    // Si la bannière d'alerte existe dans le DOM, cela signifie que le mode alertes est actif
+    const alertBanner = document.getElementById("class-alert-banner");
+
+    // Conteneur dans lequel les popups d'alertes individuelles seront ajoutées
+    const popupContainer = document.getElementById("alert-popups-container");
+
+    // Booléen indiquant si le mode alertes est actif
     const alertModeActive = !!alertBanner;
- 
-    // Mémorise si le prof a fermé la bannière manuellement
-    // Remis à false uniquement quand l'alerte disparaît puis revient
-    let bannerDismissed  = false;
-    let lastBannerState  = false;
- 
-    // Intercepte le bouton X (fermer) de la bannière
+
+    // Mémorise si le professeur a fermé manuellement la bannière d'alerte de classe
+    let bannerDismissed = false;
+
+    // Mémorise l'état précédent de la bannière pour pouvoir la réafficher si l'alerte disparaît puis revient
+    let lastBannerState = false;
+
+    // Bouton de fermeture de la bannière d'alerte de classe
     const bannerCloseBtn = document.querySelector(".alert-banner-close");
+
     if (bannerCloseBtn) {
         bannerCloseBtn.addEventListener("click", () => {
             bannerDismissed = true;
         });
     }
-    
+
 
     /* ============================================================
        4. RÉFÉRENCES DES GRAPHIQUES
     ============================================================ */
 
+    // Ces variables stockent les instances Chart.js
+    // Elles permettent de détruire un ancien graphique avant d'en recréer un nouveau
     let engagementChart = null;
     let qcmEmotionChart = null;
     let webcamEmotionChart = null;
 
+
     /* ===========================================================================================================
        5. MÉMOIRE DES ALERTES INDIVIDUELLES DÉJÀ AFFICHÉES
-       shownAlert est un Set(liste sans doublon) qui mémorise les alertes déjà affichées pour
-       éviter de spammer le professeur avec les même pop up à chaque refresh, c'est-à-dire toutes les 10 secondes
-       Clé : "<user_id>_<source>_<emotion>"
-       Réinitialisée si l'étudiant repasse sous le seuil
+
+       shownAlerts est un Set, donc une liste sans doublon.
+       Il évite d'afficher plusieurs fois la même popup à chaque rafraîchissement.
+
+       Clé utilisée :
+       "<user_id>_<source>_<emotion>"
+
+       La clé est supprimée si l'étudiant repasse sous le seuil,
+       ce qui permet de réafficher une popup si l'alerte revient plus tard.
     ============================================================================================================ */
 
     const shownAlerts = new Set();
-    window._shownAlerts = shownAlerts; // Si les messages pop up sont fermés
 
-    
+    // Exposition volontaire pour pouvoir inspecter ou vider les alertes depuis la console si besoin
+    window._shownAlerts = shownAlerts;
+
+
     /* ============================================================
        6. COURBE PRINCIPALE D'ENGAGEMENT
     ============================================================ */
 
     function renderEngagementChart(labels, values) {
         const canvas = document.getElementById("engagementChart");
+
+        // Si le canvas n'existe pas, cela signifie que le mode courbes n'est pas actif
         if (!canvas) return;
 
-        // Si le graphique existe déjà, on le détruit
+        // Si un graphique existe déjà, on le détruit avant d'en créer un nouveau
         if (engagementChart) {
             engagementChart.destroy();
         }
 
+        // Création de la courbe d'engagement avec Chart.js
         engagementChart = new Chart(canvas, {
             type: "line",
             data: {
@@ -177,18 +222,23 @@
         });
     }
 
+
     /* ============================================================
        7. DONUT DES ÉMOTIONS QCM
     ============================================================ */
 
     function renderQcmEmotionChart(labels, values) {
         const canvas = document.getElementById("qcmEmotionChart");
+
+        // Si le canvas n'existe pas, le donut QCM n'est pas affiché sur cette page
         if (!canvas) return;
 
+        // Détruit l'ancien graphique pour éviter les superpositions
         if (qcmEmotionChart) {
             qcmEmotionChart.destroy();
         }
 
+        // Création du donut des émotions déclarées dans les QCM
         qcmEmotionChart = new Chart(canvas, {
             type: "doughnut",
             data: {
@@ -238,18 +288,23 @@
         });
     }
 
+
     /* ============================================================
        8. DONUT DES ÉMOTIONS DEEPFACE
     ============================================================ */
 
     function renderWebcamEmotionChart(labels, values) {
         const canvas = document.getElementById("webcamEmotionChart");
+
+        // Si le canvas n'existe pas, le donut webcam n'est pas affiché
         if (!canvas) return;
 
+        // Détruit l'ancien graphique avant de le reconstruire
         if (webcamEmotionChart) {
             webcamEmotionChart.destroy();
         }
 
+        // Création du donut des émotions détectées par DeepFace
         webcamEmotionChart = new Chart(canvas, {
             type: "doughnut",
             data: {
@@ -303,199 +358,306 @@
         });
     }
 
+
     /* ============================================================
        9. MISE À JOUR DES CARTES STATS
     ============================================================ */
-   function updateStatsCards(data) {
-       
+
+    function updateStatsCards(data) {
         const statValues = document.querySelectorAll(".stat-value");
+
         // Ordre des cartes dans le HTML :
         // 0 = participants
         // 1 = participants actifs
-        // 2 = QCM
-        // 3 = webcam
+        // 2 = réponses QCM
+        // 3 = analyses webcam
         if (statValues.length >= 4) {
             statValues[0].innerText = data.participants_count;
             statValues[1].innerText = data.active_participants_count || 0;
             statValues[2].innerText = data.qcm_count || 0;
-            statValues[3].innerText = data.webcam_count || 0; 
-
+            statValues[3].innerText = data.webcam_count || 0;
         }
+    }
 
-    } 
+
     /* ======================================================================================================================
        10. RAFRAÎCHISSEMENT DES DONNÉES DEPUIS LE BACKEND
-       Fonction appelée toutes les 10 secondes qui récupère les données fraiches depuis Flask et mets à jour les résulats
+
+       Cette fonction appelle la route Flask :
+       /session/<id>/results/data
+
+       Elle récupère les données fraîches et met à jour :
+       - les graphiques ;
+       - les cartes statistiques ;
+       - les moyennes ;
+       - les alertes.
     ====================================================================================================================== */
 
     async function refreshResultsData() {
         try {
+            // Appel de la route JSON Flask
             const response = await fetch(`/session/${sessionId}/results/data`);
 
+            // Si Flask renvoie une erreur HTTP, on interrompt le traitement
             if (!response.ok) {
                 throw new Error("Erreur lors du chargement des résultats");
             }
+
+            // Conversion de la réponse JSON en objet JavaScript
             const data = await response.json();
+
+            // Si le backend indique que la réponse n'est pas valide, on quitte
             if (!data.ok) {
                 return;
             }
-            // Mise à jour des variables mémoire
+
+            // Mise à jour des variables mémoire pour la courbe
             engagementLabels = data.engagement_labels || [];
             engagementValues = data.engagement_values || [];
 
+            // Mise à jour des données du donut QCM
             qcmEmotionLabels = data.qcm_emotion_labels || [];
             qcmEmotionValues = data.qcm_emotion_values || [];
 
+            // Mise à jour des données du donut webcam
             webcamEmotionLabels = data.webcam_emotion_labels || [];
             webcamEmotionValues = data.webcam_emotion_values || [];
 
-            // Redessin des graphiques
+            // Redessine les graphiques avec les nouvelles données
             renderEngagementChart(engagementLabels, engagementValues);
             renderQcmEmotionChart(qcmEmotionLabels, qcmEmotionValues);
             renderWebcamEmotionChart(webcamEmotionLabels, webcamEmotionValues);
 
-            // Mise à jour des cartes
+            // Met à jour les cartes statistiques
             updateStatsCards(data);
 
-            // Mise à jour des moyennes si le mode est actif
+            // Met à jour la section des moyennes si elle existe
             updateMoyennes(data);
 
-            // Mise à jour des alertes si le mode est actif
-            if(alertModeActive){
+            // Met à jour les alertes uniquement si le mode alertes est actif
+            if (alertModeActive) {
                 updateClassAlertBanner(data.alerts);
                 processIndividualAlerts(data.alerts);
             }
 
         } catch (e) {
+            // En cas d'erreur réseau ou JSON, on évite de casser la page
             console.warn("Impossible de rafraîchir les résultats", e);
         }
     }
 
+
     /* ==============================================================================================
        11. BANNIÈRE ALERTE DE CLASSE
-       Affiche ou masque la bannière rouge en haut de la page selon si class_alert est true ou non 
+
+       Affiche ou masque la bannière rouge selon la valeur class_alert
+       renvoyée par le backend.
     ============================================================================================= */
 
     function updateClassAlertBanner(alertsData) {
+        // Si la bannière n'existe pas, le mode alertes n'est pas actif
         if (!alertBanner) return;
- 
+
+        // Convertit l'état d'alerte en booléen
         const isActive = !!(alertsData && alertsData.class_alert);
- 
-        // Si l'alerte vient de disparaître → reset bannerDismissed
-        // pour qu'elle puisse réapparaître au prochain déclenchement
+
+        // Si l'alerte vient de disparaître, on autorise la bannière à réapparaître plus tard
         if (!isActive && lastBannerState) {
             bannerDismissed = false;
         }
+
+        // Mémorise le dernier état connu
         lastBannerState = isActive;
- 
+
         if (isActive) {
             const reasonEl = document.getElementById("class-alert-reason");
+
             if (reasonEl) {
                 const sources = alertsData.class_sources || [];
                 const reasons = [];
+
+                // Alerte liée au dernier QCM collectif
                 if (sources.includes("class_snapshot")) {
                     reasons.push(`plus de ${seuilClasse}% de la classe démotivée au dernier QCM`);
                 }
+
+                // Alerte liée à l'accumulation d'étudiants en alerte individuelle
                 if (sources.includes("class_accumulation")) {
                     reasons.push(`plus de ${seuilClasse}% des étudiants en alerte individuelle`);
                 }
+
+                // Affiche les raisons dans la bannière
                 reasonEl.innerText = reasons.length ? " — " + reasons.join(" et ") : "";
             }
-            // N'affiche que si le prof n'a pas fermé manuellement
+
+            // Affiche la bannière uniquement si le professeur ne l'a pas fermée manuellement
             if (!bannerDismissed) {
                 alertBanner.style.display = "block";
             }
+
         } else {
+            // Masque la bannière si aucune alerte de classe n'est active
             alertBanner.style.display = "none";
         }
     }
-   
+
 
     /* ============================================================
        12. MISE À JOUR DES MOYENNES ÉMOTIONNELLES
-    
-       Met à jour l'encadré des 3 phrases et le tableau individuel.
-       Ne fait rien si la section #moyennes-section est absente du DOM
-       (= mode moyennes non sélectionné par le prof).
-       Appelée automatiquement à chaque cycle de 10 secondes.
+
+       Le backend renvoie des valeurs internes sans accents :
+       - motive
+       - stresse
+       - negatif
+
+       Cela facilite les calculs côté Python.
+       Cette partie JS transforme ensuite ces valeurs en libellés propres :
+       - Motivé
+       - Stressé
+       - Négatif
     ============================================================ */
 
-    // fonction permettant un code couleur
-    // Couvre les valeurs QCM sans accents (ennuye, stresse, demotive)
-    // et les valeurs DeepFace traduites (en colère, dégoûté, surpris...)
-   function emotionColor(emotion) {
-        if (!emotion || emotion === "Aucune donnée") return "var(--muted)";
+    /**
+     * Convertit une valeur interne en libellé propre pour l'affichage.
+     *
+     * Exemple :
+     * - motive -> Motivé
+     * - stresse -> Stressé
+     * - negatif -> Négatif
+     */
+    function displayEmotionLabel(emotion) {
+        if (!emotion || emotion === "Aucune donnée") {
+            return "Aucune donnée";
+        }
+
         const e = emotion.toLowerCase();
-    
-        // ── QCM ──────────────────────────────────────────────────
-        if (["demotiv", "démotiv"].some(v => e.includes(v)))             return "#ef4444"; // rouge  — Démotivé
-        if (["motiv"].some(v => e.includes(v)))                          return "#22c55e"; // vert   — Motivé
-        if (["neutre", "neutral"].some(v => e.includes(v)))              return "#94a3b8"; // gris   — Neutre
-        if (["ennuy"].some(v => e.includes(v)))                          return "#eab308"; // jaune  — Ennuyé
-        if (["stress"].some(v => e.includes(v)))                         return "#ec4899"; // rose   — Stressé
-    
-        // ── DeepFace traduit ─────────────────────────────────────
-        if (["joie", "happy"].some(v => e.includes(v)))                  return "#22c55e"; // vert   — Joie
-        if (["surpris", "surprise"].some(v => e.includes(v)))            return "#818cf8"; // violet — Surprise
-        if (["peur", "fear"].some(v => e.includes(v)))                   return "#eab308"; // jaune  — Peur
-        if (["triste", "sad"].some(v => e.includes(v)))                  return "#60a5fa"; // bleu   — Tristesse
-        if (["colere", "angry"].some(v => e.includes(v)))                return "#ef4444"; // rouge  — Colère
-        if (["degout", "disgust"].some(v => e.includes(v)))              return "#a855f7"; // violet — Dégoût
-    
+
+        const labels = {
+            // Valeurs QCM internes
+            "motive": "Motivé",
+            "neutre": "Neutre",
+            "ennuye": "Ennuyé",
+            "stresse": "Stressé",
+            "demotive": "Démotivé",
+
+            // Valeurs DeepFace brutes éventuelles
+            "happy": "Joie",
+            "neutral": "Neutre",
+            "surprise": "Surprise",
+            "fear": "Peur",
+            "sad": "Tristesse",
+            "angry": "Colère",
+            "disgust": "Dégoût",
+
+            // Valeurs DeepFace traduites côté backend
+            "surpris": "Surpris",
+            "triste": "Triste",
+            "en colere": "En colère",
+            "degoute": "Dégoûté",
+
+            // Tendances communes issues de EMOTION_MAP côté backend
+            "positif": "Positif",
+            "negatif": "Négatif"
+        };
+
+        return labels[e] || emotion;
+    }
+
+
+    /**
+     * Retourne une couleur en fonction de l'émotion ou de la tendance.
+     *
+     * Cette fonction utilise les valeurs internes envoyées par Flask.
+     * Elle ne sert pas à afficher le texte, mais seulement à colorer l'interface.
+     */
+    function emotionColor(emotion) {
+        if (!emotion || emotion === "Aucune donnée") return "var(--muted)";
+
+        const e = emotion.toLowerCase();
+
+        // Tendances générales issues de EMOTION_MAP côté backend
+        if (e === "positif") return "#22c55e";
+        if (e === "neutre") return "#94a3b8";
+        if (e === "negatif") return "#ef4444";
+
+        // Valeurs QCM
+        if (["demotiv", "démotiv"].some(v => e.includes(v))) return "#ef4444";
+        if (["motiv"].some(v => e.includes(v))) return "#22c55e";
+        if (["neutre", "neutral"].some(v => e.includes(v))) return "#94a3b8";
+        if (["ennuy"].some(v => e.includes(v))) return "#eab308";
+        if (["stress"].some(v => e.includes(v))) return "#ec4899";
+
+        // Valeurs DeepFace ou traductions
+        if (["joie", "happy"].some(v => e.includes(v))) return "#22c55e";
+        if (["surpris", "surprise"].some(v => e.includes(v))) return "#818cf8";
+        if (["peur", "fear"].some(v => e.includes(v))) return "#eab308";
+        if (["triste", "sad"].some(v => e.includes(v))) return "#60a5fa";
+        if (["colere", "angry"].some(v => e.includes(v))) return "#ef4444";
+        if (["degout", "disgust"].some(v => e.includes(v))) return "#a855f7";
+
         return "var(--muted)";
     }
-    
+
+
     function updateMoyennes(data) {
-    
-        // Si le mode moyennes n'est pas actif → section absente → on sort
+        // Si le mode moyennes n'est pas actif, la section est absente du DOM
         const section = document.getElementById("moyennes-section");
         if (!section) return;
-    
-        // ── Mise à jour des 3 phrases de moyenne globale ──────────
-    
+
+        // Récupère les éléments qui affichent les trois moyennes globales
         const subjEl = document.getElementById("avg-subjective");
-        const objEl  = document.getElementById("avg-objective");
-        const genEl  = document.getElementById("avg-general");
-    
-        // Mise à jour du texte ET de la couleur
-        // On affiche "Aucune donnée" si le backend n'a rien à retourner
-        if (subjEl) { subjEl.innerText = data.moyenne_subjective || "Aucune donnée"; subjEl.style.color = emotionColor(data.moyenne_subjective); }
-        if (objEl)  { objEl.innerText  = data.moyenne_objective  || "Aucune donnée"; objEl.style.color  = emotionColor(data.moyenne_objective); }
-        if (genEl)  { genEl.innerText  = data.moyenne_generale   || "Aucune donnée"; genEl.style.color  = emotionColor(data.moyenne_generale); }
-    
-    
-        // ── Mise à jour du tableau individuel ─────────────────────
-    
-        const tbody      = document.getElementById("tbody-individuals");
+        const objEl = document.getElementById("avg-objective");
+        const genEl = document.getElementById("avg-general");
+
+        // Affiche les moyennes avec un libellé lisible,
+        // tout en gardant la valeur brute pour calculer la couleur.
+        if (subjEl) {
+            subjEl.innerText = displayEmotionLabel(data.moyenne_subjective);
+            subjEl.style.color = emotionColor(data.moyenne_subjective);
+        }
+
+        if (objEl) {
+            objEl.innerText = displayEmotionLabel(data.moyenne_objective);
+            objEl.style.color = emotionColor(data.moyenne_objective);
+        }
+
+        if (genEl) {
+            genEl.innerText = displayEmotionLabel(data.moyenne_generale);
+            genEl.style.color = emotionColor(data.moyenne_generale);
+        }
+
+        // Récupère le corps du tableau individuel
+        const tbody = document.getElementById("tbody-individuals");
         if (!tbody) return;
-    
+
+        // Liste des étudiants envoyée par le backend
         const individuals = data.individuals || [];
-    
+
         if (individuals.length === 0) {
-            // Aucun étudiant → ligne vide
+            // Si aucun étudiant n'est présent, on affiche une ligne vide
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="4" style="padding:16px; color:var(--muted); text-align:center;">
+                    <td colspan="6" style="padding:16px; color:var(--muted); text-align:center;">
                         Aucun étudiant connecté
                     </td>
                 </tr>
             `;
             return;
         }
-    
-        // Génération d'une ligne par étudiant
+
+        // Génère une ligne HTML par étudiant
         tbody.innerHTML = individuals.map(s => `
             <tr style="border-bottom:1px solid var(--border);">
-    
-                <!-- Badge nom ou anonyme, avec couleur selon le statut -->
+
+                <!-- Badge nom ou anonyme -->
                 <td style="padding:10px 12px;">
                     <span style="
                         padding:3px 10px;
                         border-radius:20px;
                         font-size:0.8rem;
                         background:${s.anonymous
-                            ? "rgba(255,255,255,0.05)"   /* gris neutre pour anonyme */
-                            : "rgba(79,70,229,0.2)"};    /* violet pour identifié */
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(79,70,229,0.2)"};
                         border:1px solid ${s.anonymous
                             ? "rgba(255,255,255,0.1)"
                             : "rgba(79,70,229,0.4)"};
@@ -506,60 +668,79 @@
 
                 <!-- Émotion dominante QCM uniquement -->
                 <td style="padding:10px 12px; color:${emotionColor(s.emotion_qcm)}; font-weight:bold;">
-                    ${s.emotion_qcm || "—"}
+                    ${s.emotion_qcm ? displayEmotionLabel(s.emotion_qcm) : "—"}
                 </td>
-                
+
                 <!-- Émotion dominante DeepFace uniquement -->
                 <td style="padding:10px 12px; color:${emotionColor(s.emotion_webcam)}; font-weight:bold;">
-                    ${s.emotion_webcam || "—"}
+                    ${s.emotion_webcam ? displayEmotionLabel(s.emotion_webcam) : "—"}
                 </td>
-                
-                <!-- Émotion dominante toutes sources (QCM + DeepFace) -->
+
+                <!-- Tendance dominante toutes sources confondues -->
                 <td style="padding:10px 12px; color:${emotionColor(s.emotion_dominante)}; font-weight:bold;">
-                    ${s.emotion_dominante || "—"}
+                    ${s.emotion_dominante ? displayEmotionLabel(s.emotion_dominante) : "—"}
                 </td>
-    
+
                 <!-- Nombre de réponses QCM soumises -->
                 <td style="padding:10px 12px; color:var(--muted);">
                     ${s.nb_qcm} réponse${s.nb_qcm > 1 ? "s" : ""}
                 </td>
-    
+
                 <!-- Nombre d'analyses DeepFace réalisées -->
                 <td style="padding:10px 12px; color:var(--muted);">
                     ${s.nb_webcam} analyse${s.nb_webcam > 1 ? "s" : ""}
                 </td>
-    
+
             </tr>
         `).join("");
     }
+
 
     /* ====================================================================================================================
        13. POPUP ALERTE INDIVIDUELLE
     ======================================================================================================================== */
 
     function showIndividualAlertPopup(alertInfo, key) {
-    /*Crée un pop up en bas à droite pour un étudiant en alerte, avec son nom, la source (QCM/webcam), l'émotion et le ratio
-       Le pop up disparait automatiquement au bout de 12 secondes */
+        /*
+            Crée une popup en bas à droite pour signaler une alerte individuelle.
+
+            La popup contient :
+            - le nom de l'étudiant ou "Étudiant anonyme" ;
+            - la source de l'alerte ;
+            - l'émotion dominante ;
+            - le ratio mesuré.
+
+            Elle disparaît automatiquement au bout de 12 secondes.
+        */
+
         if (!popupContainer) return;
 
+        // Affiche le nom si l'étudiant n'est pas anonyme
         const name = (alertInfo.first_name && alertInfo.last_name)
             ? `${alertInfo.first_name} ${alertInfo.last_name}`
             : "Étudiant anonyme";
 
+        // Heure locale affichée dans la popup
         const now = new Date().toLocaleTimeString("fr-FR", {
-            hour: "2-digit", minute: "2-digit"
+            hour: "2-digit",
+            minute: "2-digit"
         });
 
+        // Prépare une ligne de détail pour chaque alerte de l'étudiant
         const detailLines = (alertInfo.alerts || []).map(a => {
-            const src   = a.source === "qcm" ? "QCM" : "Webcam";
-            const emo   = a.emotion ? ` · ${a.emotion}` : "";
+            const src = a.source === "qcm" ? "QCM" : "Webcam";
+            const emo = a.emotion ? ` · ${displayEmotionLabel(a.emotion)}` : "";
             const ratio = a.ratio !== null ? ` (${Math.round(a.ratio * 100)}%)` : "";
             return `${src}${emo}${ratio}`;
         });
 
+        // Création de l'élément HTML de la popup
         const popup = document.createElement("div");
         popup.className = "alert-popup";
-        popup.dataset.alertKey = key; // stocke la clé pour pouvoir la retirer de shownAlerts
+
+        // Stocke la clé pour identifier cette alerte
+        popup.dataset.alertKey = key;
+
         popup.innerHTML = `
             <div class="alert-popup-header">
                 <span class="alert-popup-title">⚠ Alerte individuelle</span>
@@ -572,6 +753,7 @@
             <span class="alert-popup-tag">${now}</span>
         `;
 
+        // Ajoute la popup dans le conteneur prévu
         popupContainer.appendChild(popup);
 
         // Auto-fermeture après 12 secondes
@@ -579,66 +761,81 @@
             if (popup.parentNode) {
                 popup.style.opacity = "0";
                 popup.style.transition = "opacity 0.4s ease";
+
                 setTimeout(() => popup.remove(), 400);
             }
         }, 12000);
     }
 
+
     function processIndividualAlerts(alertsData) {
-    /* Parcourt la liste des étudiants en alerte, génère une clé unique pour chacun
-    et affiche un message uniquemlent si la clé n'a pas encore été affichée */
+        /*
+            Parcourt les étudiants en alerte individuelle.
+
+            Objectif :
+            - afficher une popup uniquement si elle n'a pas déjà été affichée ;
+            - retirer les anciennes clés si l'étudiant repasse sous le seuil.
+        */
+
         if (!alertsData) return;
 
         const individuals = alertsData.individual_alerts || [];
 
-        // Construction des clés actuellement en alerte
+        // Clés des alertes actuellement actives
         const currentKeys = new Set();
 
         for (const alertInfo of individuals) {
+            // Construit une clé stable à partir des sources et émotions
             const sourcesKey = (alertInfo.alerts || [])
                 .map(a => `${a.source}_${a.emotion || ""}`)
                 .sort()
                 .join("|");
+
             const key = `${alertInfo.user_id}_${sourcesKey}`;
+
             currentKeys.add(key);
 
+            // Si cette alerte n'a pas encore été affichée, on crée une popup
             if (!shownAlerts.has(key)) {
                 shownAlerts.add(key);
                 showIndividualAlertPopup(alertInfo, key);
             }
         }
 
-        // Nettoyage : retire les clés d'étudiants repassés sous le seuil
-        // pour qu'ils puissent déclencher une nouvelle popup s'ils y reviennent
+        // Nettoyage des alertes qui ne sont plus actives
         for (const key of shownAlerts) {
             if (!currentKeys.has(key)) {
                 shownAlerts.delete(key);
             }
         }
     }
+
+
     /* ============================================================
        14. GESTION DE LA MODALE DES PARTICIPANTS
     ============================================================ */
-    const modalParticipants = document.getElementById('active-participants-modal');
-    const btnCloseModal = document.getElementById('close-modal');
 
-    // On attache la fonction à "window" pour qu'elle soit accessible 
-    // depuis le onclick="openParticipantsModal()" de ton HTML
-    window.openParticipantsModal = function() {
+    const modalParticipants = document.getElementById("active-participants-modal");
+    const btnCloseModal = document.getElementById("close-modal");
+
+    // Rend la fonction accessible depuis le onclick du HTML
+    window.openParticipantsModal = function () {
         if (modalParticipants) {
-            modalParticipants.style.display = 'flex';
+            modalParticipants.style.display = "flex";
         }
     };
 
+    // Fermeture de la modale avec le bouton X
     if (btnCloseModal) {
-        btnCloseModal.addEventListener('click', () => {
-            modalParticipants.style.display = 'none';
+        btnCloseModal.addEventListener("click", () => {
+            modalParticipants.style.display = "none";
         });
     }
 
-    window.addEventListener('click', (event) => {
+    // Fermeture de la modale si l'utilisateur clique en dehors du contenu
+    window.addEventListener("click", (event) => {
         if (event.target === modalParticipants) {
-            modalParticipants.style.display = 'none';
+            modalParticipants.style.display = "none";
         }
     });
 
@@ -647,12 +844,12 @@
        15. INITIALISATION
     ============================================================ */
 
-    // Premier rendu immédiat
+    // Premier rendu immédiat des graphiques avec les données injectées par Flask
     renderEngagementChart(engagementLabels, engagementValues);
     renderQcmEmotionChart(qcmEmotionLabels, qcmEmotionValues);
     renderWebcamEmotionChart(webcamEmotionLabels, webcamEmotionValues);
 
-    // Appel immédiat 
+    // Premier appel immédiat pour récupérer les données fraîches
     refreshResultsData();
 
     // Rafraîchissement automatique toutes les 10 secondes
