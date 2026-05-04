@@ -559,140 +559,141 @@ def build_session_curve_data(session_id):
 # MOYENNES ÉMOTIONNELLES (MODE MOYENNES)
 # ============================================================
 
-# Mapping émotions → catégorie commune
-# Permet de comparer QCM (français) et DeepFace (anglais)
+# Mapping des émotions vers une tendance commune.
+# On garde des valeurs internes sans accents pour éviter les incohérences dans les calculs.
 EMOTION_MAP = {
-    "motive":   "positif", 
-    "neutre":   "neutre",
-    "ennuye":   "negatif",   # ← enlever accents partout
-    "stresse":  "negatif",
+    # Émotions QCM stockées en base
+    "motive": "positif",
+    "neutre": "neutre",
+    "ennuye": "negatif",
+    "stresse": "negatif",
     "demotive": "negatif",
-    # DeepFace traduit
-    "motive":    "positif",
-    "neutre":    "neutre",
-    "surpris":   "neutre",
-    "triste":    "negatif",
+
+    # Émotions DeepFace brutes
+    "happy": "positif",
+    "neutral": "neutre",
+    "surprise": "neutre",
+    "sad": "negatif",
+    "angry": "negatif",
+    "disgust": "negatif",
+    "fear": "negatif",
+
+    # Émotions DeepFace traduites sans accents
+    "surpris": "neutre",
+    "triste": "negatif",
     "en colere": "negatif",
-    "degoute":   "negatif",
-    "stresse":   "negatif",
+    "degoute": "negatif",
 }
 
 
 def compute_dominant(emotions_list):
     """
-    Retourne l'émotion la plus fréquente d'une liste.
+    Retourne l'émotion ou la tendance la plus fréquente d'une liste.
 
     Args:
-        emotions_list (list[str]): émotions brutes
+        emotions_list (list[str]): liste d'émotions ou de tendances
 
     Returns:
-        str: émotion dominante, ou "Aucune donnée" si liste vide
+        str: valeur dominante, ou "Aucune donnée" si la liste est vide
     """
+
+    # Si la liste est vide, aucune dominante ne peut être calculée
     if not emotions_list:
         return "Aucune donnée"
 
+    # Dictionnaire utilisé pour compter le nombre d'apparitions de chaque valeur
     counts = {}
+
+    # Parcourt toutes les émotions et incrémente leur compteur
     for e in emotions_list:
         counts[e] = counts.get(e, 0) + 1
 
+    # Retourne la valeur qui possède le compteur le plus élevé
     return max(counts, key=counts.get)
 
+
+def emotion_category(emotion):
+    """
+    Convertit une émotion brute ou traduite en tendance commune.
+
+    Exemples :
+    - motive / happy -> positif
+    - neutre / neutral -> neutre
+    - stresse / fear -> negatif
+
+    Args:
+        emotion (str): émotion brute ou traduite
+
+    Returns:
+        str | None: tendance commune, ou None si l'émotion est vide/inconnue
+    """
+
+    # Si aucune émotion n'est fournie, on ne peut pas la catégoriser
+    if not emotion:
+        return None
+
+    # Nettoie l'émotion pour éviter les problèmes de majuscules ou d'espaces
+    emotion = emotion.strip().lower()
+
+    # Retourne la tendance commune si l'émotion existe dans le mapping
+    return EMOTION_MAP.get(emotion)
+
+
 # ============================================================
-# TRADUCTION DES ÉMOTIONS DEEPFACE (anglais → français)
+# TRADUCTION DES ÉMOTIONS DEEPFACE
 # ============================================================
+
+# Traduction des émotions DeepFace vers les valeurs internes du projet.
+# Les valeurs restent sans accents pour faciliter les calculs et comparaisons.
 EMOTION_TRANSLATIONS = {
-    "angry":    "en colère",
-    "disgust":  "dégoûté",
-    "fear":     "stressé",
-    "happy":    "motivé",
+    "angry":    "en colere",
+    "disgust":  "degoute",
+    "fear":     "stresse",
+    "happy":    "motive",
     "sad":      "triste",
     "surprise": "surpris",
     "neutral":  "neutre",
 }
 
-def translate_emotion(emotion):
-    if not emotion:
-        return None
-    return EMOTION_TRANSLATIONS.get(emotion.lower(), emotion)
 
-def build_session_average_data(session_id):
+def translate_emotion(emotion):
     """
-    Calcule les moyennes émotionnelles d'une session :
-      - moyenne subjective  : émotion dominante des QCM
-      - moyenne objective   : émotion dominante DeepFace
-      - moyenne générale    : catégorie dominante (QCM + DeepFace combinés)
-      - données individuelles : émotion dominante par étudiant
+    Traduit une émotion DeepFace en valeur interne utilisée par l'application.
 
     Args:
-        session_id (int): identifiant de la session
+        emotion (str): émotion renvoyée par DeepFace
 
     Returns:
-        dict avec les 3 moyennes globales et la liste individuelle
+        str | None: émotion traduite, émotion originale si inconnue, ou None si vide
     """
 
-    # Récupération des données brutes
-    qcm_rows    = QCMResponse.query.filter_by(session_id=session_id).all()
-    webcam_rows = WebcamAnalysis.query.filter_by(session_id=session_id).all()
-    participations = Participation.query.filter_by(session_id=session_id).all()
+    # Si aucune émotion n'est reçue, on ne retourne rien
+    if not emotion:
+        return None
 
-    # ── Mesure subjective (QCM) ──────────────────────────────
-    qcm_emotions       = [r.emotion for r in qcm_rows if r.emotion]
-    moyenne_subjective = compute_dominant(qcm_emotions)
+    # Convertit en minuscule puis cherche la traduction correspondante
+    return EMOTION_TRANSLATIONS.get(emotion.lower(), emotion)
 
-    # ── Mesure objective (DeepFace) ──────────────────────────
-    webcam_emotions    = [translate_emotion(w.dominant_emotion) for w in webcam_rows if translate_emotion(w.dominant_emotion)]
-    moyenne_objective  = compute_dominant(webcam_emotions)
-
-    # ── Mesure générale (QCM + DeepFace → catégories communes) ──
-    toutes_emotions  = qcm_emotions + webcam_emotions
-    moyenne_generale = compute_dominant(toutes_emotions)  # émotion réelle dominante
-
-    # ── Données individuelles ────────────────────────────────
-    individuals = []
-
-    for p in participations:
-
-        # Émotions QCM de cet étudiant
-        qcm_indiv = [
-            r.emotion for r in qcm_rows
-            if r.user_id == p.student_id and r.emotion
-        ]
-
-        # Émotions DeepFace de cet étudiant
-        webcam_indiv = [
-            translate_emotion(w.dominant_emotion) for w in webcam_rows
-            if w.user_id == p.student_id and translate_emotion(w.dominant_emotion)
-        ]
-
-        # Émotion dominante toutes sources confondues
-        emotion_dominante = compute_dominant(qcm_indiv + webcam_indiv)
-
-        individuals.append({
-            # Anonymat respecté selon le choix de l'étudiant
-            "name":              "Anonyme" if p.anonymous else f"{p.student.first_name} {p.student.last_name}",
-            "anonymous":         p.anonymous,
-            "emotion_qcm":       compute_dominant(qcm_indiv),      # Émotion dominante QCM seul
-            "emotion_webcam":    compute_dominant(webcam_indiv),   # Émotion dominante DeepFace seul
-            "emotion_dominante": emotion_dominante,                # Émotion dominante QCM + DeepFace
-            "nb_qcm":            len(qcm_indiv),
-            "nb_webcam":         len(webcam_indiv)
-        })
-
-    return {
-        "moyenne_subjective": moyenne_subjective,
-        "moyenne_objective":  moyenne_objective,
-        "moyenne_generale":   moyenne_generale,
-        "individuals":        individuals
-    }
 
 @app.template_filter('heure_fr')
 def heure_fr(dt):
     """
-    Traduit l'heure universelle en heure fr
+    Convertit une date UTC en heure française pour l'affichage dans les templates.
+
+    Args:
+        dt (datetime): date stockée en base
+
+    Returns:
+        str: date formatée en heure française
     """
+
+    # Si la date n'existe pas, cela signifie généralement que la session est encore en cours
     if dt is None:
         return "En cours"
+
+    # Convertit la date vers le fuseau horaire de Paris puis la formate lisiblement
     return dt.astimezone(ZoneInfo("Europe/Paris")).strftime("%d/%m/%Y à %Hh%M")
+
 
 def validate_email(email: str):
     """
@@ -714,26 +715,29 @@ def validate_email(email: str):
             - str : message d'erreur éventuel
     """
 
+    # Vérifie qu'une adresse email a bien été saisie
     if not email:
         return False, None, "Email requis."
 
-    # Nettoyage
+    # Nettoie l'adresse et force les minuscules pour éviter les doublons liés à la casse
     email = email.strip().lower()
 
-    # Pas d'espaces
+    # Refuse les espaces, car ils rendent l'adresse invalide
     if " " in email:
         return False, None, "L'adresse email ne doit pas contenir d'espaces."
 
-    # Longueur
+    # Limite standard d'une adresse email complète
     if len(email) > 254:
         return False, None, "Email trop long."
 
-    # Regex standard
+    # Expression régulière qui vérifie un format email classique
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
+    # Vérifie que l'adresse respecte le format attendu
     if not re.match(pattern, email):
         return False, None, "Format d'email invalide."
 
+    # Retourne l'email normalisé si tout est valide
     return True, email, None
 
 
@@ -746,29 +750,46 @@ def generate_session_code():
     Returns:
         str: code session unique
     """
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
+    # Génère une suite aléatoire de 6 caractères en majuscules et chiffres
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 
 def send_confirmation_email(email, first_name, confirm_url):
     """
     Envoie l'email de confirmation via l'API Brevo.
+
+    Args:
+        email (str): adresse du destinataire
+        first_name (str): prénom du destinataire
+        confirm_url (str): lien de confirmation du compte
+
+    Returns:
+        bool: True si l'email a été envoyé, False sinon
     """
 
+    # Récupère la clé API Brevo depuis les variables d'environnement
     api_key = os.environ.get("BREVO_API_KEY")
+
+    # Récupère l'adresse expéditeur, avec une valeur par défaut si elle n'est pas définie
     sender_email = os.environ.get("BREVO_SENDER_EMAIL", "emotrack@gmail.com")
+
+    # Récupère le nom affiché de l'expéditeur
     sender_name = os.environ.get("BREVO_SENDER_NAME", "EmoTrack")
 
+    # Sans clé API, l'appel à Brevo est impossible
     if not api_key:
         print("[BREVO] BREVO_API_KEY manquante.")
         return False
 
+    # Génère le contenu HTML de l'email à partir du template dédié
     html_body = render_template(
         "email_confirmation.html",
         first_name=first_name,
         confirm_url=confirm_url
     )
 
+    # Prépare une version texte simple pour les clients mail qui n'affichent pas le HTML
     text_body = (
         f"Bonjour {first_name},\n\n"
         "Merci de confirmer ton compte EmoTrack en cliquant sur le lien suivant :\n"
@@ -776,6 +797,7 @@ def send_confirmation_email(email, first_name, confirm_url):
         "Si tu n'es pas à l'origine de cette inscription, ignore ce message."
     )
 
+    # Corps de la requête envoyé à l'API Brevo
     payload = {
         "sender": {
             "name": sender_name,
@@ -792,6 +814,7 @@ def send_confirmation_email(email, first_name, confirm_url):
         "textContent": text_body
     }
 
+    # Headers nécessaires pour authentifier et envoyer la requête à Brevo
     headers = {
         "accept": "application/json",
         "api-key": api_key,
@@ -799,6 +822,7 @@ def send_confirmation_email(email, first_name, confirm_url):
     }
 
     try:
+        # Envoie la requête HTTP à Brevo avec un timeout pour éviter de bloquer l'application
         response = requests.post(
             "https://api.brevo.com/v3/smtp/email",
             json=payload,
@@ -806,26 +830,31 @@ def send_confirmation_email(email, first_name, confirm_url):
             timeout=10
         )
 
+        # Brevo peut retourner plusieurs codes de succès selon le traitement de l'email
         if response.status_code in [200, 201, 202]:
             print(f"[BREVO] Email de confirmation envoyé à {email}.")
             return True
 
+        # Si Brevo répond mais refuse l'envoi, on log le code et le détail
         print(f"[BREVO] Erreur API status={response.status_code} body={response.text}")
         return False
 
     except requests.RequestException as e:
+        # Gère les erreurs réseau : timeout, problème DNS, serveur inaccessible, etc.
         print(f"[BREVO] Erreur réseau : {repr(e)}")
         return False
 
 
 # ============================================================
-# DEFINITTION DES EMOTIONS "NEGATIVES"
+# DEFINITION DES EMOTIONS "NEGATIVES"
 # ============================================================
 
-# Émotions QCM négatives (en base, brutes)
-QCM_EMOTIONS_NEGATIVES = {"demotive", "ennuye","stresse"}
+# Émotions QCM considérées comme négatives.
+# Ces valeurs correspondent aux émotions stockées en base après réponse au questionnaire.
+QCM_EMOTIONS_NEGATIVES = {"demotive", "ennuye", "stresse"}
 
-# Émotions DeepFace négatives
+# Émotions DeepFace considérées comme négatives.
+# Ces valeurs correspondent aux émotions brutes renvoyées par le serveur DeepFace.
 WEBCAM_EMOTIONS_NEGATIVES = {"angry", "fear"}
 
 # ============================================================
@@ -836,77 +865,91 @@ def check_individual_alert_qcm(session_id, user_id, seuil=0.60):
     """
     Vérifie si un étudiant dépasse le seuil QCM individuel.
 
-    Calcule le ratio des réponses négatives (démotivé/ennuyé)
-    sur l'ensemble de ses réponses pendant la session.
-    Le ratio est pondéré par l'intensité :
-    Au lieu de compter 1 réponse négative = 1 point, chaque réponse
-    négative vaut (slider / 5). Ainsi une réponse "démotivé" à intensité
-    5 pèse 5x plus qu'une à intensité 1.
+    Calcule le ratio des réponses négatives sur l'ensemble de ses réponses
+    pendant la session.
 
-    Si le ratio dépasse le seuil par fixé par le professeur => alerte
+    Le ratio est pondéré par l'intensité :
+    - une réponse négative avec un slider élevé pèse plus lourd ;
+    - une réponse négative avec un slider faible pèse moins lourd.
+
+    Si le ratio dépasse le seuil fixé par le professeur, une alerte est déclenchée.
+
+    Args:
+        session_id (int): identifiant de la session
+        user_id (int): identifiant de l'étudiant
+        seuil (float): seuil d'alerte individuel
 
     Returns:
-        tuple (bool, float, str) : (alerte?, ratio, émotion dominante)
- 
-    Exemple :
-        3 réponses négatives avec slider qui vaut [5, 4, 1] et 2 positives au slider moyen 3
-        poids_negatifs = 5/5 + 4/5 + 1/5 = 1.0 + 0.8 + 0.2 = 2.0
-        poids_total = 2.0 + 2 * (3/5) = 2.0 + 1.2 = 3.2 
-        ratio = 2.0 / 3.2 = 0.625 → alerte (> 0.60)
+        tuple (bool, float, str): alerte déclenchée, ratio calculé, émotion dominante
     """
-    
-    #Récupère l'ensemble des réponses du QCM d'un étudiant
+
+    # Récupère toutes les réponses QCM de l'étudiant pour cette session
     responses = QCMResponse.query.filter_by(
         session_id=session_id,
         user_id=user_id
     ).all()
 
-    # Si les données ne sont pas récupérées
+    # Si aucune réponse n'existe, il n'y a pas assez de données pour déclencher une alerte
     if not responses:
-        print(f"[ALERT QCM] user={user_id} -> {len(responses)} réponse(s) trouvée(s)") # log explicites en cas de problème de récupération des alertes
+        print(f"[ALERT QCM] user={user_id} -> {len(responses)} réponse(s) trouvée(s)")
         return False, 0.0, None
 
-   #Sépare les réponses négatives des autres "positives"
+    # Sépare les réponses négatives des autres réponses
     negatives = [
         r for r in responses
         if (r.emotion or "").strip().lower() in QCM_EMOTIONS_NEGATIVES
     ]
+
+    # Les réponses positives/neutres correspondent à toutes les réponses non négatives
     positives = [
         r for r in responses
         if r not in negatives
     ]
 
-    # Calcule le poids de chaque réponse négative selon son intensité (slider / 5)
-    # Si le slider est absent, on prend 3 (valeur neutre par défaut)
+    # Calcule le poids des réponses négatives selon l'intensité choisie.
+    # Si le slider est absent, on prend 3 comme valeur neutre par défaut.
     poids_negatifs = sum(
         (r.slider_value if r.slider_value is not None else 3) / 5.0
         for r in negatives
     )
- 
-    # Les réponses positives sont aussi pondérées par leur intensité
+
+    # Calcule aussi le poids des réponses non négatives pour obtenir un total comparable
     poids_positifs = sum(
         (r.slider_value if r.slider_value is not None else 3) / 5.0
         for r in positives
     )
- 
+
+    # Poids total de toutes les réponses prises en compte
     poids_total = poids_negatifs + poids_positifs
- 
-    # Évite une division par zéro (ne devrait pas arriver si responses non vide)
+
+    # Sécurité pour éviter une division par zéro
     if poids_total == 0:
         return False, 0.0, None
- 
+
+    # Ratio pondéré d'émotions négatives
     ratio = poids_negatifs / poids_total
- 
-    # Trouve l'émotion négative dominante pour l'afficher dans la popup
+
+    # Initialisation de l'émotion négative dominante
     dominant = None
+
+    # Si des émotions négatives existent, on cherche celle qui revient le plus souvent
     if negatives:
-        counts = Counter(r.emotion.strip().lower() for r in negatives if r.emotion)
+        counts = Counter(
+            r.emotion.strip().lower()
+            for r in negatives
+            if r.emotion
+        )
         dominant = counts.most_common(1)[0][0] if counts else None
 
-    #log explicite de l'alerte
-    print(f"[ALERT QCM] user={user_id} → ratio_pondéré={round(ratio, 2)}, dominant={dominant}, alerte={ratio >= seuil}")
+    # Log utile pour vérifier le déclenchement des alertes pendant les tests
+    print(
+        f"[ALERT QCM] user={user_id} "
+        f"-> ratio_pondere={round(ratio, 2)}, "
+        f"dominant={dominant}, "
+        f"alerte={ratio >= seuil}"
+    )
 
-    #Retour
+    # Retourne True si le ratio dépasse le seuil configuré
     return ratio >= seuil, round(ratio, 2), dominant
     
 
@@ -915,135 +958,208 @@ def check_individual_alert_webcam(session_id, user_id, seuil=0.60):
     """
     Vérifie si un étudiant dépasse le seuil webcam individuel.
 
-    Calcule le ratio d'analyses negatives (angry/fear)
-    sur l'ensemble de ses analyses DeepFace pendant la session.
+    Calcule le ratio d'analyses négatives sur l'ensemble de ses analyses
+    DeepFace pendant la session.
+
+    Contrairement au QCM, ce calcul n'est pas pondéré par un slider.
+    On compte simplement la proportion d'émotions négatives détectées.
+
+    Args:
+        session_id (int): identifiant de la session
+        user_id (int): identifiant de l'étudiant
+        seuil (float): seuil d'alerte individuel
 
     Returns:
-        tuple (bool, float, str) : (alerte?, ratio, émotion dominante)
+        tuple (bool, float, str): alerte déclenchée, ratio calculé, émotion dominante
     """
 
+    # Récupère toutes les analyses webcam de l'étudiant pour cette session
     analyses = WebcamAnalysis.query.filter_by(
         session_id=session_id,
         user_id=user_id
     ).all()
 
+    # Si aucune analyse n'existe, on ne peut pas calculer d'alerte webcam
     if not analyses:
-        print(f"[ALERT WEBCAM] user={user_id} -> {len(analyses)} analyse(s) trouvée(s)") # ajout d'un log explicite en cas de probleme de récupération des résultats
+        print(f"[ALERT WEBCAM] user={user_id} -> {len(analyses)} analyse(s) trouvée(s)")
         return False, 0.0, None
 
+    # Sélectionne uniquement les analyses dont l'émotion est considérée comme négative
     negatives = [
         a for a in analyses
         if (a.dominant_emotion or "").strip().lower() in WEBCAM_EMOTIONS_NEGATIVES
     ]
 
+    # Calcule la proportion d'analyses négatives
     ratio = len(negatives) / len(analyses)
 
+    # Initialisation de l'émotion négative dominante
     dominant = None
+
+    # Si des émotions négatives existent, on cherche celle qui revient le plus souvent
     if negatives:
         counts = Counter(
-            a.dominant_emotion.strip().lower() for a in negatives if a.dominant_emotion
+            a.dominant_emotion.strip().lower()
+            for a in negatives
+            if a.dominant_emotion
         )
         dominant = counts.most_common(1)[0][0] if counts else None
 
+    # Log utile pour suivre les alertes webcam pendant les tests
+    print(
+        f"[ALERT WEBCAM] user={user_id} "
+        f"-> ratio={round(ratio, 2)}, "
+        f"dominant={dominant}, "
+        f"alerte={ratio >= seuil}"
+    )
+
+    # Retourne True si le ratio dépasse le seuil configuré
     return ratio >= seuil, round(ratio, 2), dominant
 
 
 def check_class_snapshot_alert(session_id, seuil=0.50):
     """
     Vérifie si le dernier QCM collectif dépasse le seuil de classe.
- 
-    Récupère la dernière occurrence "pendant" et calcule
-    le ratio de réponses négatives sur toutes les réponses de cette occurrence.
- 
+
+    La fonction se concentre uniquement sur le dernier questionnaire
+    de phase "pendant".
+
+    Elle calcule le ratio de réponses négatives sur les réponses
+    de cette dernière occurrence.
+
+    Comme pour l'alerte QCM individuelle, le calcul est pondéré
+    par l'intensité du slider.
+
+    Args:
+        session_id (int): identifiant de la session
+        seuil (float): seuil d'alerte collectif
+
     Returns:
-        tuple (bool, float) : (alerte?, ratio)
+        tuple (bool, float): alerte déclenchée, ratio calculé
     """
- 
-    """ Récupère les réponses des QCM le plus récent, donc le QCM de la phase pendant dont l'occurence est la plus grande"""
+
+    # Récupère le numéro d'occurrence le plus élevé pour les QCM de phase "pendant"
+    # Cela correspond au questionnaire collectif le plus récent.
     last_occ = db.session.query(
         db.func.max(QCMResponse.occurrence)
     ).filter_by(
         session_id=session_id,
         phase="pendant"
     ).scalar()
- 
+
+    # Si aucune occurrence n'existe, aucun QCM "pendant" n'a encore été répondu
     if last_occ is None:
-        print("[ALERT SCREENSHOT DERNIER QCM] -> les derniers QCMs n'ont pas été récupérés")
+        print("[ALERT CLASSE SNAPSHOT] aucune occurrence pendant trouvée")
         return False, 0.0
- 
+
+    # Récupère toutes les réponses correspondant au dernier QCM collectif
     responses = QCMResponse.query.filter_by(
         session_id=session_id,
         phase="pendant",
         occurrence=last_occ
     ).all()
- 
-    """Si les réponses ne sont pas récupérées"""
+
+    # Si aucune réponse n'est récupérée, on ne peut pas calculer d'alerte collective
     if not responses:
         return False, 0.0
- 
+
+    # Sépare les réponses négatives des autres réponses
     negatives = [
         r for r in responses
         if (r.emotion or "").strip().lower() in QCM_EMOTIONS_NEGATIVES
     ]
-    positives = [r for r in responses if r not in negatives]
- 
-    # Pondération par intensité — même logique que check_individual_alert_qcm
+
+    # Les réponses positives/neutres correspondent aux réponses non négatives
+    positives = [
+        r for r in responses
+        if r not in negatives
+    ]
+
+    # Calcule le poids des réponses négatives en tenant compte de l'intensité
     poids_negatifs = sum(
         (r.slider_value if r.slider_value is not None else 3) / 5.0
         for r in negatives
     )
+
+    # Calcule le poids des réponses non négatives avec la même logique
     poids_positifs = sum(
         (r.slider_value if r.slider_value is not None else 3) / 5.0
         for r in positives
     )
- 
+
+    # Additionne les deux poids pour obtenir le total des réponses prises en compte
     poids_total = poids_negatifs + poids_positifs
+
+    # Sécurité pour éviter une division par zéro
     if poids_total == 0:
         return False, 0.0
- 
+
+    # Calcule le ratio pondéré de réponses négatives dans le dernier QCM collectif
     ratio = poids_negatifs / poids_total
-    print(f"[ALERT CLASSE SNAPSHOT] occurrence={last_occ}, {len(responses)} réponse(s), ratio_pondéré={round(ratio, 2)}, alerte={ratio >= seuil}")
+
+    # Log utile pour vérifier le comportement des alertes de classe
+    print(
+        f"[ALERT CLASSE SNAPSHOT] occurrence={last_occ}, "
+        f"{len(responses)} réponse(s), "
+        f"ratio_pondere={round(ratio, 2)}, "
+        f"alerte={ratio >= seuil}"
+    )
+
+    # Retourne True si le ratio dépasse le seuil collectif configuré
     return ratio >= seuil, round(ratio, 2)
 
 
 def save_alert(session_id, level, source, user_id=None, emotion=None, ratio=None):
     """
-    Sauvegarde une alerte en base, avec fenêtre anti-doublon :
-    La fenêtre est basée sur la fréquence de la source concernée : 
-     - alerte individuelle QCM et alerte de classe => fréquence questionnaire
-     - alerte individuelle webcam => frequence_webcam
+    Sauvegarde une alerte en base avec une fenêtre anti-doublon.
+
+    La fenêtre anti-doublon dépend de la source :
+    - webcam : fréquence webcam de la session ;
+    - qcm / classe : fréquence questionnaire de la session.
+
+    Cela évite d'enregistrer plusieurs fois la même alerte en quelques secondes.
 
     Args:
-        session_id (int)  : session concernée
-        level      (str)  : "individual" ou "class"
-        source     (str)  : "qcm", "webcam", "class_snapshot", "class_accumulation"
-        user_id    (int)  : étudiant concerné (None pour alertes de classe)
-        emotion    (str)  : émotion déclenchante
-        ratio      (float): ratio mesuré
+        session_id (int): session concernée
+        level (str): niveau de l'alerte, "individual" ou "class"
+        source (str): source de l'alerte, ex: "qcm", "webcam", "class_snapshot"
+        user_id (int | None): étudiant concerné, None pour une alerte de classe
+        emotion (str | None): émotion déclenchante
+        ratio (float | None): ratio mesuré
     """
-    # from datetime import timedelta
+
+    # Récupère la session pour connaître les fréquences configurées par le professeur
     session_obj = Session.query.get(session_id)
- 
+
+    # Utilise la fréquence webcam si l'alerte vient de DeepFace
     if source == "webcam":
         freq = session_obj.frequence_webcam if session_obj else 60
+
+    # Sinon, on utilise la fréquence des questionnaires
     else:
         freq = session_obj.frequence_questionnaire if session_obj else 60
- 
+
+    # Définit une fenêtre anti-doublon entre 60 et 600 secondes.
+    # Cela évite une fenêtre trop courte ou trop longue.
     fenetre = max(60, min(600, freq))
-    cutoff  = datetime.now(timezone.utc) - timedelta(seconds=fenetre)
- 
+
+    # Toute alerte identique après cette date sera considérée comme récente
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=fenetre)
+
+    # Recherche une alerte similaire déjà créée récemment
     existing = Alert.query.filter(
         Alert.session_id == session_id,
-        Alert.level      == level,
-        Alert.source     == source,
-        Alert.user_id    == user_id,
+        Alert.level == level,
+        Alert.source == source,
+        Alert.user_id == user_id,
         Alert.triggered_at >= cutoff
     ).first()
 
-    #Doublon récent, on registre pas 
+    # Si une alerte similaire existe déjà dans la fenêtre, on ne l'enregistre pas
     if existing:
-        return 
- 
+        return
+
+    # Crée une nouvelle alerte avec les informations calculées
     alert = Alert(
         session_id=session_id,
         user_id=user_id,
@@ -1052,8 +1168,11 @@ def save_alert(session_id, level, source, user_id=None, emotion=None, ratio=None
         emotion=emotion,
         ratio=ratio
     )
+
+    # Ajoute puis sauvegarde l'alerte en base de données
     db.session.add(alert)
     db.session.commit()
+
 
 def compute_alerts(session_id):
     """
@@ -1070,34 +1189,53 @@ def compute_alerts(session_id):
             "individual_alerts"  : list[dict]
         }
     """
+
+    # Structure de réponse par défaut.
+    # Elle sera enrichie si des alertes sont détectées.
     result = {
         "class_alert": False,
         "class_sources": [],
         "individual_alerts": []
     }
 
-    # Récupère la session 
+    # Récupère la session pour accéder aux seuils définis par le professeur
     session_obj = Session.query.get(session_id)
 
-    # Récupère les seuils paramétrés pour cette session
-    seuil_ind    = session_obj.seuil_individuel if session_obj else 0.60
-    seuil_classe = session_obj.seuil_classe     if session_obj else 0.50
+    # Récupère les seuils paramétrés pour cette session.
+    # Si la session est introuvable, on utilise des valeurs par défaut.
+    seuil_ind = session_obj.seuil_individuel if session_obj else 0.60
+    seuil_classe = session_obj.seuil_classe if session_obj else 0.50
 
+    # Récupère tous les étudiants ayant rejoint la session
     participations = Participation.query.filter_by(session_id=session_id).all()
+
+    # Compteur utilisé pour savoir combien d'étudiants sont individuellement en alerte
     students_in_alert_count = 0
 
-    # --- Alertes individuelles ---
+    # ========================================================
+    # Alertes individuelles
+    # ========================================================
+
     for p in participations:
+
+        # Récupère l'utilisateur lié à la participation
         user = User.query.get(p.student_id)
+
+        # Si l'utilisateur n'existe plus, on ignore cette participation
         if not user:
             continue
 
+        # Liste des alertes détectées pour cet étudiant
         student_alerts = []
 
-        # QCM
+        # Vérifie l'alerte individuelle basée sur les réponses QCM
         triggered_qcm, ratio_qcm, emotion_qcm = check_individual_alert_qcm(
-            session_id, p.student_id, seuil_ind
+            session_id,
+            p.student_id,
+            seuil_ind
         )
+
+        # Si le seuil QCM est dépassé, on sauvegarde l'alerte et on l'ajoute au résultat
         if triggered_qcm:
             save_alert(
                 session_id=session_id,
@@ -1107,16 +1245,21 @@ def compute_alerts(session_id):
                 emotion=emotion_qcm,
                 ratio=ratio_qcm
             )
+
             student_alerts.append({
                 "source": "qcm",
                 "emotion": emotion_qcm,
                 "ratio": ratio_qcm
             })
 
-        # Webcam
+        # Vérifie l'alerte individuelle basée sur les analyses webcam
         triggered_webcam, ratio_webcam, emotion_webcam = check_individual_alert_webcam(
-            session_id, p.student_id, seuil_ind
+            session_id,
+            p.student_id,
+            seuil_ind
         )
+
+        # Si le seuil webcam est dépassé, on sauvegarde l'alerte et on l'ajoute au résultat
         if triggered_webcam:
             save_alert(
                 session_id=session_id,
@@ -1126,24 +1269,45 @@ def compute_alerts(session_id):
                 emotion=emotion_webcam,
                 ratio=ratio_webcam
             )
+
             student_alerts.append({
                 "source": "webcam",
                 "emotion": emotion_webcam,
                 "ratio": ratio_webcam
             })
 
+        # Si au moins une alerte a été détectée pour cet étudiant
         if student_alerts:
+
+            # Incrémente le nombre d'étudiants individuellement en alerte
             students_in_alert_count += 1
+
+            # Ajoute l'étudiant et ses alertes dans la réponse finale
             result["individual_alerts"].append({
                 "user_id": p.student_id,
+
+                # Conserve l'information d'anonymat pour l'affichage côté professeur
                 "anonymous": p.anonymous,
+
+                # Affiche l'identité uniquement si l'étudiant n'est pas anonyme
                 "first_name": user.first_name if not p.anonymous else None,
                 "last_name": user.last_name if not p.anonymous else None,
+
+                # Liste des alertes détectées pour cet étudiant
                 "alerts": student_alerts
             })
 
-    # --- Alerte de classe : snapshot QCM ---
-    triggered_snapshot, ratio_snapshot = check_class_snapshot_alert(session_id, seuil_classe)
+    # ========================================================
+    # Alerte de classe : dernier QCM collectif
+    # ========================================================
+
+    # Vérifie si le dernier QCM collectif dépasse le seuil de classe
+    triggered_snapshot, ratio_snapshot = check_class_snapshot_alert(
+        session_id,
+        seuil_classe
+    )
+
+    # Si le seuil est dépassé, on sauvegarde une alerte de classe
     if triggered_snapshot:
         save_alert(
             session_id=session_id,
@@ -1151,12 +1315,24 @@ def compute_alerts(session_id):
             source="class_snapshot",
             ratio=ratio_snapshot
         )
+
+        # Indique qu'au moins une alerte collective est active
         result["class_alert"] = True
+
+        # Précise que l'alerte vient du dernier QCM collectif
         result["class_sources"].append("class_snapshot")
 
-    # --- Alerte de classe : accumulation individuelle ---
+    # ========================================================
+    # Alerte de classe : accumulation d'alertes individuelles
+    # ========================================================
+
+    # Si la session contient des participants, on peut calculer un ratio de classe
     if participations:
+
+        # Calcule la proportion d'étudiants ayant au moins une alerte individuelle
         ratio_accum = students_in_alert_count / len(participations)
+
+        # Si trop d'étudiants sont en alerte individuelle, on déclenche une alerte collective
         if ratio_accum >= seuil_classe:
             save_alert(
                 session_id=session_id,
@@ -1164,9 +1340,14 @@ def compute_alerts(session_id):
                 source="class_accumulation",
                 ratio=round(ratio_accum, 2)
             )
+
+            # Indique qu'une alerte collective est active
             result["class_alert"] = True
+
+            # Précise que l'alerte vient de l'accumulation individuelle
             result["class_sources"].append("class_accumulation")
 
+    # Retourne toutes les alertes calculées pour affichage dans la page résultats
     return result
 
 
@@ -1182,16 +1363,23 @@ def home():
     Redirige automatiquement l'utilisateur :
     - vers le dashboard professeur si connecté en tant que professeur
     - vers le dashboard étudiant si connecté en tant qu'étudiant
-    - vers la page landing (page d'accueil) sinon
+    - vers la page landing si l'utilisateur n'est pas connecté
 
     Returns:
-        Redirection Flask
+        Redirection Flask ou template HTML
     """
+
+    # Si un utilisateur est déjà connecté, son id est stocké dans la session Flask
     if "user_id" in session:
+
+        # Redirige les professeurs vers leur tableau de bord
         if session.get("role") == "professor":
             return redirect(url_for("professor_dashboard"))
+
+        # Tous les autres utilisateurs connectés sont redirigés vers le dashboard étudiant
         return redirect(url_for("student_dashboard"))
 
+    # Si personne n'est connecté, on affiche la page d'accueil publique
     return render_template("landing.html")
 
 
@@ -1210,34 +1398,38 @@ def register():
     - vérifie que l'email n'existe pas déjà
     - crée le compte utilisateur en base
     - génère un token de confirmation
-    - envoie un email de confirmation avec timeout contrôlé
+    - envoie un email de confirmation
     """
 
+    # Le traitement d'inscription se fait uniquement lors de l'envoi du formulaire
     if request.method == "POST":
 
+        # Récupère les données du formulaire et nettoie les chaînes de caractères
         first_name = request.form.get("first_name", "").strip()
         last_name = request.form.get("last_name", "").strip()
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         role_input = request.form.get("role")
 
-        # Vérification des champs obligatoires
+        # Vérifie que tous les champs obligatoires sont présents
         if not all([first_name, last_name, email, password, role_input]):
             flash("Tous les champs sont obligatoires.", "error")
             return render_template("register.html")
 
-        # Vérification du mot de passe
+        # Vérifie que le mot de passe respecte la longueur minimale
         if len(password) < 8:
             flash("Mot de passe trop court.", "error")
             return render_template("register.html")
 
-        # Validation du format email
+        # Vérifie et normalise l'adresse email
         is_valid, email, error = validate_email(email)
+
+        # Si l'email est invalide, on affiche le message d'erreur correspondant
         if not is_valid:
             flash(error, "error")
             return render_template("register.html")
 
-        # Validation du rôle
+        # Convertit le rôle reçu depuis le formulaire en valeur attendue par le modèle User
         if role_input == "student":
             role = UserRole.STUDENT
         elif role_input == "professor":
@@ -1246,22 +1438,25 @@ def register():
             flash("Rôle invalide.", "error")
             return render_template("register.html")
 
-        # Vérification que l'email n'existe pas déjà
+        # Vérifie en base qu'aucun compte n'existe déjà avec cet email
         try:
             existing_user = User.query.filter_by(email=email).first()
+
         except Exception as e:
+            # En cas d'erreur de base, on évite de continuer l'inscription
             print(f"[REGISTER] Erreur vérification email existant : {e}")
             flash("Erreur temporaire lors de la vérification du compte.", "error")
             return render_template("register.html")
 
+        # Si l'utilisateur existe déjà, on le renvoie vers la connexion
         if existing_user:
             flash("Un compte existe déjà.", "warning")
             return redirect(url_for("login"))
 
-        # Création du token de confirmation
+        # Génère un token sécurisé pour le lien de confirmation email
         token = secrets.token_urlsafe(32)
 
-        # Création de l'utilisateur
+        # Crée l'objet utilisateur sans stocker le mot de passe en clair
         user = User(
             first_name=first_name,
             last_name=last_name,
@@ -1272,26 +1467,29 @@ def register():
             verification_token=token
         )
 
-        # Enregistrement en base AVANT l'envoi du mail
+        # Enregistre le compte en base avant l'envoi de l'email
         try:
             db.session.add(user)
             db.session.commit()
+
         except Exception as e:
+            # En cas d'erreur, on annule l'insertion pour garder une base cohérente
             db.session.rollback()
             print(f"[REGISTER] Erreur création compte : {e}")
             flash("Erreur lors de la création du compte. Réessaie.", "error")
             return render_template("register.html")
 
-        # Création du lien de confirmation
+        # Génère une URL complète vers la route de confirmation email
         confirm_url = url_for("confirm_email", token=token, _external=True)
 
-        # Envoi de l'email de confirmation
+        # Envoie l'email de confirmation via Brevo
         email_sent = send_confirmation_email(
             email=email,
             first_name=first_name,
             confirm_url=confirm_url
         )
 
+        # Message affiché selon le résultat de l'envoi email
         if email_sent:
             flash("Inscription réussie ! Vérifie ta boîte mail.", "success")
         else:
@@ -1300,9 +1498,12 @@ def register():
                 "warning"
             )
 
+        # Après inscription, l'utilisateur est renvoyé vers la page de connexion
         return redirect(url_for("login"))
 
+    # En GET, on affiche simplement le formulaire d'inscription
     return render_template("register.html")
+
 
 # ============================================================
 # CONFIRMATION D'EMAIL
@@ -1312,31 +1513,40 @@ def register():
 def confirm_email(token):
     """
     Valide l'adresse email de l'utilisateur via le token reçu par mail.
- 
-    - Cherche l'utilisateur correspondant au token
-    - Passe email_verified à True
-    - Supprime le token (usage unique)
-    - Redirige vers la connexion
- 
+
+    Fonctionnement :
+    - cherche l'utilisateur correspondant au token
+    - passe email_verified à True
+    - supprime le token pour éviter sa réutilisation
+    - redirige vers la connexion
+
     Returns:
         Redirection Flask
     """
+
+    # Recherche l'utilisateur associé au token de confirmation
     user = User.query.filter_by(verification_token=token).first()
- 
+
+    # Si aucun utilisateur n'est trouvé, le lien est invalide ou déjà utilisé
     if user is None:
         flash("Lien de confirmation invalide ou déjà utilisé.", "error")
         return redirect(url_for("login"))
- 
+
+    # Si l'email est déjà confirmé, inutile de modifier de nouveau le compte
     if user.email_verified:
         flash("Ton adresse email est déjà confirmée. Tu peux te connecter.", "success")
         return redirect(url_for("login"))
- 
-    # Activation du compte
+
+    # Active le compte utilisateur
     user.email_verified = True
-    user.verification_token = None  # Token à usage unique : on le supprime
+
+    # Supprime le token pour qu'il ne puisse pas être utilisé une deuxième fois
+    user.verification_token = None
+
+    # Sauvegarde les modifications en base
     db.session.commit()
- 
-    flash(" Adresse email confirmée ! Tu peux maintenant te connecter.", "success")
+
+    flash("Adresse email confirmée ! Tu peux maintenant te connecter.", "success")
     return redirect(url_for("login"))
  
 
@@ -1349,54 +1559,65 @@ def login():
     """
     Gère l'authentification utilisateur.
 
-    - Vérifie email et mot de passe
-    - Initialise la session Flask
-    - Injecte les données utilisateur dans la session (utile pour les templates)
+    Fonctionnement :
+    - récupère l'email et le mot de passe
+    - vérifie les identifiants
+    - bloque la connexion si l'email n'est pas confirmé
+    - initialise la session Flask
+    - redirige selon le rôle utilisateur
     """
 
+    # Le traitement de connexion se fait uniquement lors de l'envoi du formulaire
     if request.method == "POST":
 
+        # Récupère les identifiants saisis dans le formulaire
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
 
+        # Vérifie que les deux champs sont remplis
         if not email or not password:
             flash("Merci de remplir tous les champs.", "error")
             return render_template("login.html")
 
+        # Recherche l'utilisateur correspondant à l'email
         user = User.query.filter_by(email=email).first()
 
+        # Vérifie l'existence du compte et la validité du mot de passe hashé
         if user is None or not check_password_hash(user.password_hash, password):
             flash("Email ou mot de passe incorrect.", "error")
             return render_template("login.html")
 
-        # Vérification que l'email a été confirmé
+        # Bloque la connexion tant que l'adresse email n'a pas été confirmée
         if not user.email_verified:
             flash("Tu dois confirmer ton adresse email avant de te connecter. Vérifie ta boîte mail.", "warning")
-            return render_template("login.html")    
+            return render_template("login.html")
 
-        # Initialisation session complète
+        # Nettoie l'ancienne session avant de créer une nouvelle session utilisateur
         session.clear()
 
+        # Rend la session permanente pour appliquer PERMANENT_SESSION_LIFETIME
         session.permanent = True
 
+        # Stocke les informations essentielles de l'utilisateur dans la session Flask
         session["user_id"] = user.id
         session["role"] = user.role.value
         session["consent_given"] = user.consent_given
 
-        # communication avec les templates
+        # Ces informations sont utilisées côté templates pour personnaliser l'affichage
         session["first_name"] = user.first_name
         session["last_name"] = user.last_name
         session["email"] = user.email
 
         flash("Connexion réussie.", "success")
 
+        # Redirige l'utilisateur vers le dashboard correspondant à son rôle
         if user.role == UserRole.PROFESSOR:
             return redirect(url_for("professor_dashboard"))
 
         return redirect(url_for("student_dashboard"))
 
+    # En GET, on affiche simplement le formulaire de connexion
     return render_template("login.html")
-
 
 # ============================================================
 # CONSENTEMENT RGPD
@@ -1408,23 +1629,29 @@ def consent():
     Enregistre le consentement RGPD de l'utilisateur.
 
     Fonctionnement :
-    - Vérifie que l'utilisateur est connecté
-    - Met à jour la base de données
-    - Met à jour la session
+    - vérifie que l'utilisateur est connecté
+    - met à jour la base de données
+    - met à jour la session Flask
 
     Returns:
         tuple: ("", 204) si succès, 403 sinon
     """
 
+    # Refuse l'action si aucun utilisateur n'est connecté
     if "user_id" not in session:
         return "", 403
 
+    # Récupère l'utilisateur connecté
     user = User.query.get(session["user_id"])
+
+    # Enregistre le consentement en base
     user.consent_given = True
     db.session.commit()
 
+    # Met aussi à jour la session Flask pour éviter d'afficher encore la popup
     session["consent_given"] = True
 
+    # Réponse vide avec code 204 : succès sans contenu à renvoyer
     return "", 204
 
 
@@ -1437,12 +1664,17 @@ def logout():
     """
     Déconnecte l'utilisateur.
 
-    - Supprime toutes les données de session
-    - Redirige vers la page de connexion
+    Fonctionnement :
+    - supprime toutes les données stockées dans la session Flask
+    - redirige vers la page de connexion
     """
 
+    # Supprime toutes les informations de session de l'utilisateur
     session.clear()
+
     flash("Vous avez été déconnecté.", "success")
+
+    # Redirige vers la page de connexion après déconnexion
     return redirect(url_for("login"))
 
 
@@ -1455,49 +1687,58 @@ def student_dashboard():
     """
     Dashboard étudiant.
 
-    - Vérifie le rôle
-    - Récupère les participations
-    - Permet d'afficher les sessions rejointes
+    Fonctionnement :
+    - vérifie que l'utilisateur connecté est bien un étudiant
+    - récupère les dernières sessions rejointes
+    - envoie les participations au template étudiant
     """
 
+    # Bloque l'accès si l'utilisateur connecté n'est pas un étudiant
     if session.get("role") != "student":
         flash("Accès refusé.", "error")
         return redirect(url_for("login"))
 
-    # récupérer participations
+    # Récupère les 7 dernières participations de l'étudiant connecté
     participations = Participation.query.filter_by(
         student_id=session["user_id"]
-    ).order_by(Participation.date_join.desc()).limit(7).all()
-    #Prend les 7 dernières sessions en partant de la plus récente
+    ).order_by(
+        Participation.date_join.desc()
+    ).limit(7).all()
 
+    # Affiche le dashboard étudiant avec l'historique des participations
     return render_template(
         "student_dashboard.html",
         participations=participations
     )
+
 
 @app.route("/dashboard/professor")
 def professor_dashboard():
     """
     Dashboard professeur.
 
-    - Vérifie le rôle
-    - Récupère les sessions créées par le professeur
-    - Envoie les données au template
+    Fonctionnement :
+    - vérifie que l'utilisateur connecté est bien un professeur
+    - récupère les sessions créées par ce professeur
+    - envoie ces sessions au template professeur
     """
 
+    # Bloque l'accès si l'utilisateur connecté n'est pas un professeur
     if session.get("role") != "professor":
         flash("Accès refusé.", "error")
         return redirect(url_for("login"))
 
-    # récupération sessions du professeur
+    # Récupère toutes les sessions créées par le professeur connecté
     sessions = Session.query.filter_by(
         professor_id=session["user_id"]
     ).all()
 
+    # Affiche le dashboard professeur avec la liste de ses sessions
     return render_template(
         "professor_dashboard.html",
         sessions=sessions
     )
+
 
 # ============================================================
 # CREATION DE SESSION
@@ -1508,44 +1749,63 @@ def create_session():
     """
     Création d'une session par un professeur.
 
-    - Valide les données
-    - Récupère plusieurs modes d'affichage
-    - Génère un code unique
-    - Sauvegarde en base
+    Fonctionnement :
+    - vérifie que l'utilisateur est un professeur
+    - récupère les paramètres du formulaire
+    - récupère les modes d'affichage sélectionnés
+    - applique les seuils d'alerte si le mode alertes est activé
+    - génère un code de session
+    - sauvegarde la session en base
+    - redirige vers la page de résultats
     """
 
+    # Seul un professeur peut créer une session
     if session.get("role") != "professor":
         return redirect(url_for("login"))
 
+    # Récupère les fréquences choisies dans le formulaire
     freq_q = int(request.form["freq_questionnaire"])
     freq_w = int(request.form["freq_webcam"])
+
+    # Récupère tous les modes cochés par le professeur
     selected_modes = request.form.getlist("modes_affichage")
-    
-    # Seuils paramétrables — uniquement si le mode alertes est coché
+
+    # Valeurs par défaut des seuils d'alerte
     seuil_individuel = 0.60
-    seuil_classe     = 0.50
+    seuil_classe = 0.50
+
+    # Si le mode alertes est activé, on récupère les seuils personnalisés
     if "alertes" in selected_modes:
         try:
+            # Les valeurs du formulaire sont en pourcentage, donc on divise par 100
             seuil_individuel = int(request.form.get("seuil_individuel", 60)) / 100
-            seuil_classe     = int(request.form.get("seuil_classe", 50)) / 100
+            seuil_classe = int(request.form.get("seuil_classe", 50)) / 100
+
+            # Sécurise les seuils pour éviter des valeurs trop basses ou trop hautes
             seuil_individuel = max(0.10, min(0.90, seuil_individuel))
-            seuil_classe     = max(0.10, min(0.90, seuil_classe))
+            seuil_classe = max(0.10, min(0.90, seuil_classe))
+
         except (ValueError, TypeError):
+            # En cas de valeur invalide, on garde les seuils par défaut
             pass
 
+    # Les fréquences doivent être strictement positives
     if freq_q <= 0 or freq_w <= 0:
         flash("Valeurs invalides.", "error")
         return redirect(url_for("professor_dashboard"))
 
+    # Le professeur doit sélectionner au moins un mode d'affichage
     if not selected_modes:
         flash("Veuillez sélectionner au moins un mode d'affichage.", "error")
         return redirect(url_for("professor_dashboard"))
 
-    # Exemple de résultat : "courbes,moyennes"
+    # Stocke les modes sélectionnés sous forme de chaîne séparée par des virgules
     mode = ",".join(selected_modes)
 
+    # Génère un code court que les étudiants utiliseront pour rejoindre la session
     code = generate_session_code()
 
+    # Crée l'objet Session avec tous les paramètres choisis par le professeur
     new_session = Session(
         code_session=code,
         professor_id=session["user_id"],
@@ -1553,17 +1813,20 @@ def create_session():
         frequence_questionnaire=freq_q,
         frequence_webcam=freq_w,
         mode_affichage=mode,
-        seuil_individuel = seuil_individuel,
-        seuil_classe = seuil_classe
+        seuil_individuel=seuil_individuel,
+        seuil_classe=seuil_classe
     )
 
+    # Sauvegarde la nouvelle session en base
     db.session.add(new_session)
     db.session.commit()
 
+    # Indique à Flask que la session utilisateur a été modifiée
     session.modified = True
 
     flash(f"Session créée ! Code : {code}", "success")
 
+    # Redirige directement le professeur vers la page de résultats de la session
     return redirect(url_for("session_results", session_id=new_session.id))
 
 # ============================================================
@@ -1576,41 +1839,48 @@ def join_session():
     Permet à un étudiant de rejoindre une session.
 
     Fonctionnement :
-    - Vérifie que l'utilisateur est un étudiant
-    - Vérifie que la session existe et est active
-    - Vérifie qu'il n'est pas déjà inscrit
-    - Crée une participation
-    - Initialise la phase à "avant"
-    - Enregistre l'id de session dans la session Flask
-    - Redirige vers le QCM
+    - vérifie que l'utilisateur connecté est un étudiant
+    - récupère le code session envoyé par le formulaire
+    - vérifie que la session existe et est active
+    - vérifie que l'étudiant n'est pas déjà inscrit
+    - crée une participation
+    - initialise la phase QCM à "avant"
+    - stocke l'id de session dans la session Flask
+    - redirige vers le questionnaire
     """
 
     print("=== /join_session called ===")
     print(f"user_id = {session.get('user_id')}")
     print(f"role = {session.get('role')}")
 
-    # Vérification du rôle
+    # Seul un étudiant peut rejoindre une session
     if session.get("role") != "student":
         print("Erreur: utilisateur non étudiant")
         return redirect(url_for("login"))
 
-    # Récupération des données du formulaire
+    # Récupère le code session saisi et le met en majuscules
     code = request.form.get("code_session", "").strip().upper()
+
+    # Vérifie si l'étudiant a coché le mode anonyme
     anonymous = "anonymous" in request.form
+
+    # Vérifie si l'étudiant a autorisé l'utilisation de la webcam
     webcam_enabled = "webcam_enabled" in request.form
 
     print(f"code_session = {code}")
     print(f"anonymous = {anonymous}")
     print(f"webcam_enabled = {webcam_enabled}")
 
+    # Empêche de continuer si aucun code n'a été saisi
     if not code:
         print("Erreur: code session vide")
         flash("Veuillez entrer un code session.", "error")
         return redirect(url_for("student_dashboard"))
 
-    # Recherche de la session
+    # Recherche la session correspondant au code fourni
     session_obj = Session.query.filter_by(code_session=code).first()
 
+    # Si aucune session ne correspond, le code est invalide
     if session_obj is None:
         print("Erreur: session introuvable")
         flash("Code session invalide.", "error")
@@ -1619,25 +1889,26 @@ def join_session():
     print(f"session_obj.id = {session_obj.id}")
     print(f"session_obj.is_active = {session_obj.is_active}")
 
-    # Vérification que la session est active
+    # Empêche de rejoindre une session déjà terminée
     if not session_obj.is_active:
         print("Erreur: session inactive")
         flash("Cette session est terminée.", "error")
         return redirect(url_for("student_dashboard"))
 
-    # Vérification d'inscription existante
+    # Vérifie si l'étudiant est déjà inscrit à cette session
     existing = Participation.query.filter_by(
         session_id=session_obj.id,
         student_id=session["user_id"]
     ).first()
 
+    # Empêche les doublons de participation pour une même session
     if existing:
         print("Erreur: participation déjà existante")
         flash("Vous êtes déjà inscrit à cette session.", "warning")
         return redirect(url_for("student_dashboard"))
 
-    # Création de la participation
     try:
+        # Crée la participation avec les choix de l'étudiant
         participation = Participation(
             session_id=session_obj.id,
             student_id=session["user_id"],
@@ -1645,6 +1916,7 @@ def join_session():
             webcam_enabled=webcam_enabled
         )
 
+        # Sauvegarde la participation en base
         db.session.add(participation)
         db.session.commit()
 
@@ -1652,27 +1924,32 @@ def join_session():
         print(f"participation.id = {participation.id}")
 
     except Exception as e:
+        # En cas d'erreur, on annule l'insertion pour éviter une base incohérente
         db.session.rollback()
         print(f"Erreur DB join_session: {e}")
         flash("Erreur lors de l'inscription à la session.", "error")
         return redirect(url_for("student_dashboard"))
 
-    # Initialisation session Flask
+    # Initialise la première phase du questionnaire
     session["phase"] = "avant"
+
+    # Stocke l'id de la session active dans la session Flask
     session["current_session_id"] = session_obj.id
+
+    # Indique à Flask que la session utilisateur a changé
     session.modified = True
 
     print(f"session['phase'] = {session.get('phase')}")
     print(f"session['current_session_id'] = {session.get('current_session_id')}")
     print("Redirection vers /qcm")
 
+    # Redirige l'étudiant vers le questionnaire initial
     return redirect(url_for("qcm"))
-    
+
 
 # ============================================================
 # Questionnaires (Mesure subjective)
 # ============================================================   
-
 
 @app.route("/qcm")
 def qcm():
@@ -1680,50 +1957,57 @@ def qcm():
     Affiche le questionnaire étudiant en fonction de la phase.
 
     Fonctionnement :
-    - Vérifie que l'utilisateur est authentifié et est un étudiant
-    - Vérifie qu'une session est en cours côté serveur
-    - Vérifie que l'utilisateur participe à la session
-    - Récupère la session en base
-    - Si la session est terminée, force la phase "apres"
-    - Si le QCM "avant" a déjà été répondu, passe automatiquement en "pendant"
-    - Envoie les données nécessaires au template
+    - vérifie que l'utilisateur est authentifié et est un étudiant
+    - vérifie qu'une session est en cours côté serveur
+    - vérifie que l'utilisateur participe à la session
+    - récupère la session en base
+    - si la session est terminée, force la phase "apres"
+    - si le QCM "avant" a déjà été répondu, passe automatiquement en "pendant"
+    - envoie les données nécessaires au template
     """
 
-    # Vérification authentification
+    # Vérifie qu'un utilisateur est bien connecté
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    # Vérification rôle
+    # Seuls les étudiants peuvent accéder au questionnaire
     if session.get("role") != "student":
         return redirect(url_for("login"))
 
-    # Récupération session en cours
+    # Récupère l'id de la session actuellement suivie par l'étudiant
     session_id = session.get("current_session_id")
+
+    # Si aucune session n'est active côté Flask, retour au dashboard étudiant
     if not session_id:
         return redirect(url_for("student_dashboard"))
 
-    # Vérification participation
+    # Vérifie que l'étudiant participe réellement à cette session
     participation = Participation.query.filter_by(
         session_id=session_id,
         student_id=session["user_id"]
     ).first()
 
+    # Si aucune participation n'est trouvée, l'accès au QCM est refusé
     if not participation:
         return redirect(url_for("student_dashboard"))
 
-    # Récupération session en base
+    # Récupère la session en base de données
     session_obj = Session.query.get(session_id)
+
+    # Si la session n'existe plus, retour au dashboard
     if not session_obj:
         return redirect(url_for("student_dashboard"))
 
-    # Si le professeur a terminé la session → phase finale
+    # Si le professeur a terminé la session, on force le questionnaire final
     if not session_obj.is_active:
         session["phase"] = "apres"
 
-    # Récupération de la phase actuelle (source de vérité serveur)
+    # Récupère la phase courante stockée côté serveur
+    # Par défaut, un étudiant commence par la phase "avant"
     phase = session.get("phase", "avant")
 
-    # Transition automatique : si "avant" déjà répondu → passer en "pendant"
+    # Si l'étudiant est encore en phase "avant",
+    # on vérifie s'il a déjà répondu au questionnaire initial
     if phase == "avant":
         already_answered = QCMResponse.query.filter_by(
             session_id=session_id,
@@ -1731,11 +2015,12 @@ def qcm():
             phase="avant"
         ).first()
 
+        # Si le QCM initial a déjà été répondu, on passe automatiquement en phase "pendant"
         if already_answered:
             phase = "pendant"
             session["phase"] = "pendant"
 
-    # Envoi des données au template
+    # Affiche le template QCM avec les paramètres nécessaires au JavaScript
     return render_template(
         "qcm.html",
         session_id=session_id,
@@ -1745,89 +2030,105 @@ def qcm():
         webcam_active=participation.webcam_enabled
     )
 
+
 @app.route("/qcm/submit", methods=["POST"])
 def submit_qcm():
     """
     Enregistre une réponse QCM de manière sécurisée.
 
     Fonctionnement :
-    - Vérifie que l'utilisateur est authentifié
-    - Récupère la session active côté serveur
-    - Vérifie que la session existe et est active (ou en phase finale)
-    - Vérifie que l'utilisateur participe à la session
-    - Détermine la phase côté serveur (ignore le client)
-    - Valide les données reçues (emotion, slider_value)
-    - Calcule automatiquement l'occurrence
-    - Enregistre la réponse en base
-    - Gère les erreurs (doublons, erreurs serveur)
-    - Met à jour la phase si nécessaire
+    - vérifie que l'utilisateur est authentifié
+    - récupère la session active côté serveur
+    - vérifie que la session existe
+    - vérifie que l'utilisateur participe à la session
+    - détermine la phase côté serveur
+    - valide les données reçues
+    - calcule automatiquement l'occurrence
+    - enregistre la réponse en base
+    - met à jour la phase si nécessaire
     """
 
-    # Vérification authentification
+    # Vérifie qu'un utilisateur est connecté avant d'accepter une réponse
     if "user_id" not in session:
         return jsonify({"error": "Unauthorized"}), 403
 
-    # Récupération session active
+    # Récupère la session active depuis la session Flask
     session_id = session.get("current_session_id")
+
+    # Si aucune session active n'est trouvée, la réponse ne peut pas être enregistrée
     if not session_id:
         return jsonify({"error": "No active session"}), 400
 
-    # Récupération JSON
+    # Récupère les données JSON envoyées par le front
     payload = request.get_json()
+
+    # Refuse la requête si aucun JSON n'a été envoyé
     if not payload:
         return jsonify({"error": "Missing JSON payload"}), 400
 
-    # Récupération session DB
+    # Récupère la session correspondante en base
     session_obj = Session.query.get(session_id)
+
+    # Si la session n'existe pas, on arrête le traitement
     if not session_obj:
         return jsonify({"error": "Session not found"}), 404
 
-    # Vérification participation
+    # Vérifie que l'étudiant connecté participe bien à cette session
     participant = Participation.query.filter_by(
         session_id=session_id,
         student_id=session["user_id"]
     ).first()
 
+    # Si l'étudiant ne participe pas à la session, il ne peut pas envoyer de réponse
     if not participant:
         return jsonify({"error": "Unauthorized"}), 403
 
-    # Détermination de la phase côté serveur
-    # Si session terminée → phase "apres"
+    # La phase est déterminée côté serveur pour éviter qu'un utilisateur la modifie depuis le front
     if not session_obj.is_active:
+        # Si la session est terminée, toute réponse envoyée devient une réponse de phase "apres"
         phase = "apres"
         session["phase"] = "apres"
     else:
+        # Sinon, on utilise la phase courante stockée dans la session Flask
         phase = session.get("phase", "avant")
 
-    # Récupération des données
+    # Récupère l'émotion et l'intensité envoyées par le questionnaire
     emotion = payload.get("emotion")
     slider_value = payload.get("slider_value")
 
-    # Validation des émotions autorisées
+    # Liste blanche des émotions acceptées par l'application
     allowed_emotions = [
         "motive", "neutre", "ennuye", "stresse", "demotive"
     ]
 
+    # Refuse toute émotion inconnue pour éviter d'enregistrer des valeurs incohérentes
     if emotion not in allowed_emotions:
         return jsonify({"error": "Invalid emotion"}), 400
 
-    # Validation slider
+    # Convertit et valide la valeur du slider
     try:
         slider_value = int(slider_value)
+
+        # Le slider doit rester dans l'échelle prévue par le questionnaire
         if not (1 <= slider_value <= 5):
             raise ValueError
+
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid slider value"}), 400
 
-    # Calcul sécurisé de l'occurrence
+    # Récupère la dernière réponse de cet étudiant dans cette session
     last_response = QCMResponse.query.filter_by(
         session_id=session_id,
         user_id=session["user_id"]
-    ).order_by(QCMResponse.occurrence.desc()).first()
+    ).order_by(
+        QCMResponse.occurrence.desc()
+    ).first()
 
+    # Calcule l'occurrence suivante.
+    # Si c'est la première réponse, l'occurrence commence à 1.
     occurrence = (last_response.occurrence + 1) if last_response else 1
 
-    # Création réponse
+    # Crée l'objet réponse QCM qui sera enregistré en base
     response = QCMResponse(
         session_id=session_id,
         user_id=session["user_id"],
@@ -1837,76 +2138,92 @@ def submit_qcm():
         occurrence=occurrence
     )
 
-    # Sauvegarde DB
     try:
+        # Ajoute la réponse à la transaction SQLAlchemy
         db.session.add(response)
+
+        # Sauvegarde définitivement la réponse en base
         db.session.commit()
 
     except IntegrityError:
+        # En cas de doublon ou contrainte d'intégrité, on annule la transaction
         db.session.rollback()
         return jsonify({"error": "Already submitted"}), 400
 
     except Exception:
+        # En cas d'erreur serveur, on annule aussi la transaction
         db.session.rollback()
         return jsonify({"error": "Server error"}), 500
 
-    # Transition de phase (avant → pendant uniquement)
+    # Après le questionnaire initial, l'étudiant passe en phase "pendant"
     if session.get("phase") == "avant":
         session["phase"] = "pendant"
-    # Si c'était le QCM final → on nettoie la session
+
+    # Si la réponse correspond au questionnaire final, on nettoie la session active
     if phase == "apres":
         session.pop("current_session_id", None)
         session.pop("phase", None)
 
+    # Réponse JSON de succès pour le JavaScript côté front
     return jsonify({"ok": True})
 
 # ============================================================
 # Fermer une session en cours (coté professeur)
 # ============================================================
 
-
 @app.route("/end_session/<int:session_id>", methods=["POST"])
 def end_session(session_id):
     """
-    Clôture une session d'examen et met à jour les états côté serveur et client.
+    Clôture une session côté professeur.
+
+    Fonctionnement :
+    - vérifie que l'utilisateur connecté est un professeur
+    - récupère la session concernée
+    - passe la session en inactive
+    - enregistre la date de fin en UTC
+    - sauvegarde les modifications en base
     """
-    # Vérification de sécurité : seul un utilisateur avec le rôle 'professor' peut fermer une session
+
+    # Seul un professeur peut fermer une session
     if session.get("role") != "professor":
         flash("Accès non autorisé.", "danger")
         return redirect(url_for("login"))
 
     try:
-        # Récupération de l'objet Session via l'ID passé dans l'URL
+        # Récupère la session à fermer grâce à l'id présent dans l'URL
         current_sess = Session.query.get(session_id)
-        
+
+        # Vérifie que la session existe bien
         if current_sess:
-            # Mise à jour du statut en base de données pour stopper les flux de données
+
+            # Passe la session en inactive pour empêcher les nouveaux envois de données
             current_sess.is_active = False
-            
-            # Enregistrement de l'horodatage de fin (utilise l'import datetime)
 
-            current_sess.date_fin = datetime.now(timezone.utc) 
+            # Stocke la date de fin en UTC pour rester cohérent avec les autres dates en base
+            current_sess.date_fin = datetime.now(timezone.utc)
 
-            
-            # Validation des modifications dans la base de données SQL
+            # Sauvegarde les modifications en base
             db.session.commit()
-            
-            # Nettoyage de la variable de session Flask pour éviter les conflits d'ID
+
+            # Si cette session était aussi stockée dans la session Flask, on la retire
             if session.get("current_session_id") == session_id:
                 session.pop("current_session_id", None)
-            
+
             flash(f"La session '{current_sess.code_session}' a été fermée avec succès.", "success")
+
         else:
             flash("Session introuvable.", "warning")
 
     except Exception as e:
-        # En cas d'erreur (ex: perte de connexion DB), on annule les modifications en cours
+        # En cas d'erreur, on annule les modifications non sauvegardées
         db.session.rollback()
-        # Log de l'erreur dans la console pour le débogage technique
+
+        # Log utile pour comprendre l'erreur dans les logs serveur
         print(f"Erreur lors de la fermeture : {str(e)}")
+
         flash("Erreur critique lors de la fermeture de la session.", "danger")
 
-    # Redirection vers le tableau de bord pour rafraîchir la liste des sessions
+    # Retour au dashboard professeur pour afficher l'état mis à jour des sessions
     return redirect(url_for("professor_dashboard"))
 
 # ============================================================
@@ -1917,36 +2234,76 @@ def end_session(session_id):
 def download_session_report(session_id):
     """
     Génère et retourne un fichier texte récapitulatif de la session.
-    Accessible uniquement par le professeur créateur.
+
+    Accessible uniquement par le professeur créateur de la session.
+
+    Le rapport contient :
+    - les informations générales de la session
+    - les compteurs QCM / webcam
+    - les moyennes émotionnelles
+    - le détail par étudiant
     """
+
+    # Import local utilisé uniquement dans cette route pour construire une réponse fichier
     from flask import make_response
 
+    # Vérifie que l'utilisateur connecté est bien un professeur
     if session.get("role") != "professor":
         flash("Accès réservé au professeur.", "error")
         return redirect(url_for("login"))
 
+    # Récupère la session demandée en base
     session_obj = Session.query.get(session_id)
 
+    # Vérifie que la session existe et qu'elle appartient au professeur connecté
     if not session_obj or session_obj.professor_id != session.get("user_id"):
         flash("Session introuvable ou accès non autorisé.", "error")
         return redirect(url_for("professor_dashboard"))
 
-    # Données de la session
+    # Calcule les données de moyenne utilisées dans le rapport
     average_data = build_session_average_data(session_id)
-    participants_count = Participation.query.filter_by(session_id=session_id).count()
-    qcm_count = QCMResponse.query.filter_by(session_id=session_id).count()
-    webcam_count = WebcamAnalysis.query.filter_by(session_id=session_id).count()
 
-    # Formatage des dates
+    # Compte le nombre total de participants à la session
+    participants_count = Participation.query.filter_by(
+        session_id=session_id
+    ).count()
+
+    # Compte le nombre total de réponses QCM enregistrées
+    qcm_count = QCMResponse.query.filter_by(
+        session_id=session_id
+    ).count()
+
+    # Compte le nombre total d'analyses webcam enregistrées
+    webcam_count = WebcamAnalysis.query.filter_by(
+        session_id=session_id
+    ).count()
+
+    # Fuseau horaire utilisé pour afficher les dates en heure française
     paris = ZoneInfo("Europe/Paris")
-    date_debut = session_obj.date_debut.astimezone(paris).strftime("%d/%m/%Y à %Hh%M") if session_obj.date_debut else "—"
-    date_fin   = session_obj.date_fin.astimezone(paris).strftime("%d/%m/%Y à %Hh%M")   if session_obj.date_fin   else "En cours"
 
-    # Construction du rapport texte
+    # Formate la date de début si elle existe
+    date_debut = (
+        session_obj.date_debut.astimezone(paris).strftime("%d/%m/%Y à %Hh%M")
+        if session_obj.date_debut
+        else "—"
+    )
+
+    # Formate la date de fin si elle existe, sinon indique que la session est en cours
+    date_fin = (
+        session_obj.date_fin.astimezone(paris).strftime("%d/%m/%Y à %Hh%M")
+        if session_obj.date_fin
+        else "En cours"
+    )
+
+    # Liste de lignes qui sera ensuite transformée en texte complet
     lignes = []
+
+    # En-tête du rapport
     lignes.append("=" * 60)
     lignes.append("        RAPPORT DE SESSION — EMOTRACK")
     lignes.append("=" * 60)
+
+    # Informations générales de la session
     lignes.append(f"  Code session     : {session_obj.code_session}")
     lignes.append(f"  Début            : {date_debut}")
     lignes.append(f"  Fin              : {date_fin}")
@@ -1954,39 +2311,57 @@ def download_session_report(session_id):
     lignes.append(f"  Réponses QCM     : {qcm_count}")
     lignes.append(f"  Analyses webcam  : {webcam_count}")
     lignes.append("")
+
+    # Bloc des moyennes générales
     lignes.append("=" * 60)
     lignes.append("  MOYENNES GÉNÉRALES")
     lignes.append("=" * 60)
     lignes.append(f"  Subjective (QCM)      : {average_data['moyenne_subjective'] or 'Aucune donnée'}")
-    lignes.append(f"  Objective (DeepFace)  : {average_data['moyenne_objective']  or 'Aucune donnée'}")
-    lignes.append(f"  Générale              : {average_data['moyenne_generale']   or 'Aucune donnée'}")
+    lignes.append(f"  Objective (DeepFace)  : {average_data['moyenne_objective'] or 'Aucune donnée'}")
+    lignes.append(f"  Générale              : {average_data['moyenne_generale'] or 'Aucune donnée'}")
     lignes.append("")
+
+    # Bloc du détail par étudiant
     lignes.append("=" * 60)
     lignes.append("  DÉTAIL PAR ÉTUDIANT")
     lignes.append("=" * 60)
 
-    # En-tête tableau
+    # En-tête du tableau texte
     lignes.append(f"  {'Étudiant':<25} {'Émotion dominante':<20} {'QCM':>5} {'Webcam':>8}")
     lignes.append("  " + "-" * 58)
 
+    # Ajoute une ligne par étudiant dans le rapport
     for ind in average_data["individuals"]:
-        nom    = "Anonyme" if ind["anonymous"] else ind["name"]
+
+        # Respecte l'anonymat si l'étudiant a choisi ce mode
+        nom = "Anonyme" if ind["anonymous"] else ind["name"]
+
+        # Utilise un tiret si aucune émotion dominante n'est disponible
         emotion = ind["emotion_dominante"] or "—"
+
+        # Ligne formatée pour garder un tableau lisible dans un fichier texte
         lignes.append(f"  {nom:<25} {emotion:<20} {ind['nb_qcm']:>5} {ind['nb_webcam']:>8}")
 
+    # Pied de rapport
     lignes.append("")
     lignes.append("=" * 60)
     lignes.append("  Généré par EmoTrack")
     lignes.append("=" * 60)
 
+    # Transforme la liste de lignes en contenu texte final
     contenu = "\n".join(lignes)
 
-    # Retourne le fichier en téléchargement
+    # Crée une réponse Flask contenant le fichier texte
     response = make_response(contenu)
+
+    # Indique au navigateur qu'il s'agit d'un fichier texte en UTF-8
     response.headers["Content-Type"] = "text/plain; charset=utf-8"
+
+    # Force le téléchargement avec un nom de fichier basé sur le code session
     response.headers["Content-Disposition"] = (
         f"attachment; filename=rapport_{session_obj.code_session}.txt"
     )
+
     return response
 
 # ============================================================
@@ -2000,23 +2375,27 @@ def leave_session():
     Permet à un étudiant de quitter une session proprement.
 
     Fonctionnement :
-    - Ne supprime PAS immédiatement la session
-    - Force la phase "apres"
-    - Redirige vers le QCM final
+    - vérifie que l'utilisateur est connecté
+    - vérifie qu'une session est en cours
+    - force la phase "apres"
+    - redirige vers le QCM final
     """
 
+    # Si aucun utilisateur n'est connecté, retour à la connexion
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    # Si pas de session → retour dashboard
+    # Si aucune session active n'est stockée côté Flask, retour au dashboard étudiant
     if not session.get("current_session_id"):
         return redirect(url_for("student_dashboard"))
 
-    # On force la phase finale
+    # Force la prochaine page QCM à afficher le questionnaire final
     session["phase"] = "apres"
+
+    # Indique à Flask que la session utilisateur a été modifiée
     session.modified = True
 
-    # On renvoie vers le QCM final
+    # Redirige vers la route QCM, qui affichera le questionnaire de phase "apres"
     return redirect(url_for("qcm"))
 
 
@@ -2027,23 +2406,39 @@ def leave_session():
 @app.route("/check_session_status")
 def check_session_status():
     """
-    Vérifie si la session est active et si l'utilisateur est dans une session.
+    Vérifie l'état de la session actuellement suivie par l'étudiant.
+
+    Cette route est appelée côté front pour savoir si :
+    - aucune session n'est active ;
+    - la session n'existe plus ;
+    - la session est terminée ;
+    - la session est toujours active.
+
+    Returns:
+        JSON: statut de la session
     """
 
+    # Récupère l'id de la session active depuis la session Flask
     session_id = session.get("current_session_id")
 
+    # Aucun id en session signifie que l'étudiant n'est dans aucune session
     if not session_id:
         return jsonify({"status": "no_session"})
 
+    # Récupère la session correspondante en base
     session_obj = Session.query.get(session_id)
 
+    # Si la session n'existe plus en base, on le signale au front
     if not session_obj:
         return jsonify({"status": "not_found"})
 
+    # Si le professeur a fermé la session, le front doit déclencher la phase finale
     if not session_obj.is_active:
         return jsonify({"status": "ended"})
 
+    # Sinon, la session est toujours active
     return jsonify({"status": "active"})
+
 
 # ============================================================
 # ANALYSE WEBCAM DEEPFACE
@@ -2067,56 +2462,68 @@ def analyze_webcam():
 
     print("=== /analyze_webcam called ===")
 
-    # Vérification authentification
+    # Vérifie qu'un utilisateur est connecté avant d'accepter une analyse webcam
     if "user_id" not in session:
         print("Erreur: utilisateur non authentifié")
         return jsonify({"error": "Non authentifié"}), 401
 
+    # Récupère l'utilisateur connecté et la session actuellement suivie
     user_id = session.get("user_id")
     current_session_id = session.get("current_session_id")
 
     print(f"user_id = {user_id}")
     print(f"current_session_id = {current_session_id}")
 
-    # Vérification session active
+    # Refuse l'analyse si l'étudiant n'est dans aucune session active côté Flask
     if not current_session_id:
         print("Erreur: aucune session active dans la session Flask")
         return jsonify({"error": "Aucune session active"}), 400
 
-    # Vérification présence payload JSON
+    # Récupère le JSON envoyé par le JavaScript côté front.
+    # silent=True évite une erreur Flask si le JSON est mal formé.
     data = request.get_json(silent=True)
+
+    # Vérifie qu'un payload JSON a bien été reçu
     if not data:
         print("Erreur: payload JSON absent")
         return jsonify({"error": "Payload JSON invalide"}), 400
 
-    # Vérification présence image
+    # Récupère l'image encodée en base64 envoyée par le navigateur
     image_b64 = data.get("image")
+
+    # Vérifie que l'image est bien présente dans la requête
     if not image_b64:
         print("Erreur: image absente du payload")
         return jsonify({"error": "Image manquante"}), 400
 
-    # Sécurité minimale : évite d'envoyer à HF une image vide ou quasi vide
+    # Sécurité minimale : une image base64 valide doit avoir une certaine longueur.
+    # Cela évite d'envoyer une image vide ou presque vide au serveur DeepFace.
     if len(image_b64.strip()) < 50:
         print("Erreur: image vide ou trop courte")
         return jsonify({"error": "Image vide"}), 400
 
-    # Vérification configuration DeepFace
+    # Récupère l'URL du serveur DeepFace depuis les variables d'environnement
     deepface_url = os.environ.get("DEEPFACE_URL", "").strip()
+
+    # Récupère la clé secrète partagée entre Flask et le serveur DeepFace
     deepface_secret = os.environ.get("DEEPFACE_SECRET_KEY", "").strip()
 
     print(f"deepface_url = {deepface_url}")
     print(f"deepface_secret_present = {bool(deepface_secret)}")
 
+    # Sans URL DeepFace, l'application ne sait pas où envoyer l'image
     if not deepface_url:
         print("Erreur: DEEPFACE_URL manquant")
         return jsonify({"error": "Configuration DeepFace manquante"}), 500
 
+    # Sans clé secrète, l'appel au serveur DeepFace est refusé par sécurité
     if not deepface_secret:
         print("Erreur: DEEPFACE_SECRET_KEY manquant")
         return jsonify({"error": "Clé secrète DeepFace manquante"}), 500
 
-    # Appel au serveur Hugging Face
     try:
+        # Prépare les données envoyées au serveur DeepFace.
+        # L'image reste encodée en base64 pour être transmise facilement en JSON.
         payload = {
             "image": image_b64,
             "secret_key": deepface_secret
@@ -2124,6 +2531,7 @@ def analyze_webcam():
 
         print("Envoi de la requête au serveur DeepFace...")
 
+        # Envoie l'image au serveur DeepFace hébergé sur Hugging Face
         response = requests.post(
             f"{deepface_url}/analyze",
             json=payload,
@@ -2134,10 +2542,11 @@ def analyze_webcam():
         print(f"HF response text = {response.text}")
 
     except requests.RequestException as e:
+        # Gère les erreurs réseau : timeout, serveur inaccessible, URL incorrecte, etc.
         print(f"Erreur réseau vers DeepFace: {e}")
         return jsonify({"error": "Impossible de contacter le serveur DeepFace"}), 502
 
-    # Vérification réponse HF
+    # Vérifie que le serveur DeepFace a bien répondu avec un statut de succès
     if response.status_code != 200:
         print("Erreur: réponse non 200 du serveur DeepFace")
         return jsonify({
@@ -2145,13 +2554,16 @@ def analyze_webcam():
             "details": response.text
         }), 502
 
-    # Vérification parsing JSON de la réponse HF
     try:
+        # Convertit la réponse DeepFace en dictionnaire Python
         result = response.json()
+
     except Exception as e:
+        # Si la réponse n'est pas un JSON valide, on ne peut pas l'exploiter
         print(f"Erreur parsing JSON HF: {e}")
         return jsonify({"error": "Réponse JSON DeepFace invalide"}), 502
 
+    # Récupère les informations principales renvoyées par DeepFace
     emotion = result.get("emotion")
     confidence = result.get("confidence")
     all_emotions = result.get("all_emotions", {})
@@ -2160,13 +2572,14 @@ def analyze_webcam():
     print(f"confidence = {confidence}")
     print(f"all_emotions = {all_emotions}")
 
-    # Vérification minimale du contenu renvoyé par HF
+    # Vérifie que DeepFace a bien renvoyé une émotion dominante
     if not emotion:
         print("Erreur: emotion absente dans la réponse HF")
         return jsonify({"error": "Emotion absente dans la réponse DeepFace"}), 502
 
-    # Sauvegarde en base
     try:
+        # Prépare l'objet WebcamAnalysis à enregistrer en base.
+        # all_emotions est converti en JSON texte pour être stocké facilement.
         analysis = WebcamAnalysis(
             session_id=current_session_id,
             user_id=user_id,
@@ -2177,12 +2590,16 @@ def analyze_webcam():
 
         print("Tentative d'enregistrement en base...")
 
+        # Ajoute l'analyse webcam à la transaction SQLAlchemy
         db.session.add(analysis)
+
+        # Sauvegarde définitivement l'analyse en base
         db.session.commit()
 
         print("Enregistrement DB OK")
         print(f"analysis.id = {analysis.id}")
 
+        # Renvoie le résultat au front pour confirmer que l'analyse a réussi
         return jsonify({
             "ok": True,
             "emotion": emotion,
@@ -2191,10 +2608,17 @@ def analyze_webcam():
         }), 200
 
     except Exception as e:
+        # En cas d'erreur base de données, on annule la transaction
         db.session.rollback()
+
         print(f"Erreur DB: {e}")
+
         return jsonify({"error": "Erreur lors de l'enregistrement en base"}), 500
 
+
+# ============================================================
+# RESULTATS DE LA SESSION
+# ============================================================
 
 @app.route("/session/<int:session_id>/results")
 def session_results(session_id):
@@ -2215,29 +2639,31 @@ def session_results(session_id):
         HTML: page résultats ou redirection sécurisée
     """
 
-    # Vérification du rôle
+    # Vérifie que l'utilisateur connecté est bien un professeur
     if session.get("role") != "professor":
         flash("Accès réservé au professeur.", "error")
         return redirect(url_for("login"))
 
-    # Recherche session
+    # Récupère la session demandée en base
     session_obj = Session.query.get(session_id)
 
+    # Si aucune session n'est trouvée, retour au dashboard professeur
     if not session_obj:
         flash("Session introuvable.", "error")
         return redirect(url_for("professor_dashboard"))
 
-    # Vérification sécurité : seul le créateur accède à ses résultats
+    # Vérifie que le professeur connecté est bien le créateur de cette session
     if session_obj.professor_id != session.get("user_id"):
         flash("Accès non autorisé à cette session.", "error")
         return redirect(url_for("professor_dashboard"))
 
-    # Nombre de participants ayant rejoint la session 
+    # Compte tous les étudiants ayant rejoint la session
     participants_count = Participation.query.filter_by(
         session_id=session_id
     ).count()
 
-    # Calcul des participants actifs 
+    # Compte uniquement les participants encore actifs.
+    # Un étudiant est considéré comme inactif s'il a déjà envoyé un QCM de phase "apres".
     active_participants_count = Participation.query.filter(
         Participation.session_id == session_id,
         ~Participation.student_id.in_(
@@ -2247,15 +2673,21 @@ def session_results(session_id):
             )
         )
     ).count()
-    
 
-    # Mode d'affichage choisi à la création
+    # Récupère les modes d'affichage stockés sous forme de chaîne en base
     raw_modes = (session_obj.mode_affichage or "").strip().lower()
-    selected_modes = [m.strip() for m in raw_modes.split(",") if m.strip()]
 
-    # Données des graphiques
+    # Transforme la chaîne "courbes,moyennes,alertes" en liste exploitable
+    selected_modes = [
+        m.strip()
+        for m in raw_modes.split(",")
+        if m.strip()
+    ]
+
+    # Prépare les données nécessaires aux graphiques de la page résultats
     curve_data = build_session_curve_data(session_id)
 
+    # Affiche la page résultats avec toutes les données nécessaires au premier chargement
     return render_template(
         "result.html",
         session_obj=session_obj,
@@ -2278,36 +2710,38 @@ def session_results_data(session_id):
     """
     Retourne les données JSON des résultats.
 
-    Cette route sert au rafraîchissement automatique de la page
+    Cette route sert au rafraîchissement automatique de la page résultats
     sans recharger tout le HTML.
 
     Args:
         session_id (int): identifiant de la session
 
     Returns:
-        JSON: données des graphiques et des cartes stats
+        JSON: données des graphiques, cartes statistiques, moyennes et alertes
     """
 
-    # Accès réservé au professeur
+    # Accès réservé aux professeurs
     if session.get("role") != "professor":
         return jsonify({"error": "Accès refusé"}), 403
 
-    # Recherche session
+    # Récupère la session demandée en base
     session_obj = Session.query.get(session_id)
 
+    # Si la session n'existe pas, on renvoie une erreur JSON
     if not session_obj:
         return jsonify({"error": "Session introuvable"}), 404
 
-    # Vérification sécurité
+    # Vérifie que le professeur connecté est bien propriétaire de la session
     if session_obj.professor_id != session.get("user_id"):
         return jsonify({"error": "Accès non autorisé"}), 403
 
-    # Nombre de participants ayant rejoint la session
+    # Compte tous les étudiants ayant rejoint la session
     participants_count = Participation.query.filter_by(
         session_id=session_id
     ).count()
 
-    # Participants actifs
+    # Compte les participants actifs.
+    # Les étudiants ayant déjà répondu au QCM final "apres" sont exclus.
     active_participants_count = Participation.query.filter(
         Participation.session_id == session_id,
         ~Participation.student_id.in_(
@@ -2317,90 +2751,138 @@ def session_results_data(session_id):
             )
         )
     ).count()
-   
-    raw_modes = (session_obj.mode_affichage or "").strip().lower()
-    selected_modes = [m.strip() for m in raw_modes.split(",") if m.strip()]
 
-    # Données graphiques
+    # Récupère les modes d'affichage choisis à la création de la session
+    raw_modes = (session_obj.mode_affichage or "").strip().lower()
+
+    # Convertit les modes en liste pour faciliter les tests avec "in"
+    selected_modes = [
+        m.strip()
+        for m in raw_modes.split(",")
+        if m.strip()
+    ]
+
+    # Prépare les données des courbes et donuts
     curve_data = build_session_curve_data(session_id)
 
-    # Calcul des alertes uniquement si le mode est actif
+    # Les alertes ne sont calculées que si le mode "alertes" est activé
     alerts_data = None
     if "alertes" in selected_modes:
         alerts_data = compute_alerts(session_id)
-        
-    # Calcul des moyennes uniquement si le mode est actif    
+
+    # Les moyennes ne sont calculées que si le mode "moyennes" est activé
     average_data = None
     if "moyennes" in selected_modes:
         average_data = build_session_average_data(session_id)
-    
 
+    # Renvoie toutes les données au JavaScript de la page résultats
     return jsonify({
         "ok": True,
+
+        # Compteurs généraux
         "participants_count": participants_count,
         "active_participants_count": active_participants_count,
         "qcm_count": curve_data["qcm_count"],
         "webcam_count": curve_data["webcam_count"],
+
+        # Informations sur la session
         "selected_modes": selected_modes,
         "session_is_active": session_obj.is_active,
+
+        # Données de la courbe d'engagement
         "engagement_labels": curve_data["engagement_labels"],
         "engagement_values": curve_data["engagement_values"],
+
+        # Données du donut QCM
         "qcm_emotion_labels": curve_data["qcm_emotion_labels"],
         "qcm_emotion_values": curve_data["qcm_emotion_values"],
+
+        # Données du donut webcam
         "webcam_emotion_labels": curve_data["webcam_emotion_labels"],
         "webcam_emotion_values": curve_data["webcam_emotion_values"],
-        "alerts": alerts_data,
-        "moyenne_subjective": average_data["moyenne_subjective"] if average_data else None,
-        "moyenne_objective":  average_data["moyenne_objective"]  if average_data else None,
-        "moyenne_generale":   average_data["moyenne_generale"]   if average_data else None,
-        "individuals":        average_data["individuals"]        if average_data else [],
-    })
 
+        # Données d'alertes si le mode est actif
+        "alerts": alerts_data,
+
+        # Données de moyennes si le mode est actif
+        "moyenne_subjective": average_data["moyenne_subjective"] if average_data else None,
+        "moyenne_objective": average_data["moyenne_objective"] if average_data else None,
+        "moyenne_generale": average_data["moyenne_generale"] if average_data else None,
+        "individuals": average_data["individuals"] if average_data else [],
+    })
 
 # ============================================================
 # ROUTE : HISTORIQUE DES ALERTES
 # ============================================================
 
+
 @app.route("/session/<int:session_id>/alerts")
 def session_alerts(session_id):
     """
     Affiche la page historique des alertes d'une session.
-    Accessible uniquement si le mode "alertes" est actif
-    et au professeur créateur.
+
+    Fonctionnement :
+    - vérifie que l'utilisateur connecté est un professeur
+    - récupère la session demandée
+    - vérifie que le professeur connecté est bien le créateur de la session
+    - récupère toutes les alertes de la session
+    - enrichit les alertes avec les informations étudiant si nécessaire
+    - affiche le template alerts.html
+
+    Args:
+        session_id (int): identifiant de la session
+
+    Returns:
+        HTML: page historique des alertes ou redirection sécurisée
     """
 
+    # L'historique des alertes est réservé aux professeurs
     if session.get("role") != "professor":
         flash("Accès réservé au professeur.", "error")
         return redirect(url_for("login"))
 
+    # Récupère la session concernée
     session_obj = Session.query.get(session_id)
 
+    # Si la session n'existe pas, on retourne au dashboard professeur
     if not session_obj:
         flash("Session introuvable.", "error")
         return redirect(url_for("professor_dashboard"))
 
+    # Vérifie que le professeur connecté est bien le créateur de la session
     if session_obj.professor_id != session.get("user_id"):
         flash("Accès non autorisé.", "error")
         return redirect(url_for("professor_dashboard"))
 
-    # Récupération de toutes les alertes, ordre antichronologique
+    # Récupère toutes les alertes de la session, de la plus récente à la plus ancienne
     alerts = Alert.query.filter_by(
         session_id=session_id
-    ).order_by(Alert.triggered_at.desc()).all()
+    ).order_by(
+        Alert.triggered_at.desc()
+    ).all()
 
-    # Enrichissement avec les infos utilisateur
+    # Liste finale envoyée au template avec les informations utiles pour l'affichage
     alerts_enriched = []
+
     for alert in alerts:
+
+        # Récupère l'utilisateur concerné si l'alerte est individuelle
         user = User.query.get(alert.user_id) if alert.user_id else None
 
+        # Par défaut, une alerte est considérée comme non anonyme
         anonymous = False
+
         if user:
+            # Récupère la participation pour savoir si l'étudiant était anonyme dans cette session
             participation = Participation.query.filter_by(
                 session_id=session_id,
                 student_id=alert.user_id
             ).first()
+
+            # Si la participation existe, on récupère le choix d'anonymat de l'étudiant
             anonymous = participation.anonymous if participation else False
 
+        # Construit une version enrichie de l'alerte pour simplifier le template
         alerts_enriched.append({
             "id": alert.id,
             "level": alert.level,
@@ -2408,16 +2890,22 @@ def session_alerts(session_id):
             "emotion": alert.emotion,
             "ratio": alert.ratio,
             "triggered_at": alert.triggered_at,
+
+            # Information utilisée pour masquer ou afficher l'identité de l'étudiant
             "anonymous": anonymous,
+
+            # Nom et prénom affichés uniquement si l'alerte concerne un étudiant non anonyme
             "first_name": user.first_name if user and not anonymous else None,
             "last_name": user.last_name if user and not anonymous else None,
         })
 
+    # Affiche la page d'historique des alertes
     return render_template(
         "alerts.html",
         session_obj=session_obj,
         alerts=alerts_enriched
     )
+
 
 # ============================================================
 # CHATBOT EMO-TRACK
@@ -2427,26 +2915,44 @@ def session_alerts(session_id):
 def chat():
     """
     Route pour le chatbot assistant.
-    Reçoit un message utilisateur et retourne la réponse de Groq.
-    """
-    data = request.get_json()
-    user_message = data.get("message")
-    history = data.get("history", []) # Liste de {'role': 'user/assistant', 'content': '...'}
 
+    Fonctionnement :
+    - reçoit un message utilisateur en JSON
+    - récupère éventuellement l'historique de conversation
+    - appelle la fonction get_chatbot_response
+    - retourne la réponse du chatbot au format JSON
+    """
+
+    # Récupère le JSON envoyé par le front
+    data = request.get_json()
+
+    # Récupère le message utilisateur
+    user_message = data.get("message")
+
+    # Récupère l'historique de conversation si le front l'envoie
+    history = data.get("history", [])
+
+    # Refuse la requête si aucun message n'a été saisi
     if not user_message:
         return jsonify({"error": "Message vide."}), 400
 
+    # Appelle la fonction qui communique avec le chatbot Groq
     response = get_chatbot_response(user_message, history)
-    
+
+    # Retourne la réponse au JavaScript côté front
     return jsonify({"reply": response})
 
 
-        
 # ============================================================
 # LANCEMENT
 # ============================================================
+
 if __name__ == "__main__":
-    # On récupère le port dynamique de Render, sinon 5000 par défaut
+
+    # Récupère le port fourni par Render.
+    # En local, si PORT n'existe pas, Flask utilisera le port 5000.
     port = int(os.environ.get("PORT", 5000))
-    # On force l'hôte à 0.0.0.0 pour accepter les connexions externes
+
+    # host="0.0.0.0" permet à l'application d'être accessible depuis l'extérieur,
+    # ce qui est nécessaire sur Render.
     app.run(host="0.0.0.0", port=port)
