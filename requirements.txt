@@ -1,10 +1,25 @@
+# ============================================================
+# DEPENDANCES PRINCIPALES DE L'APPLICATION EMOTRACK
+# ============================================================
+
+# Framework web utilisé pour créer l'application
 flask
+
+# Extension Flask permettant d'utiliser SQLAlchemy comme ORM
 flask-sqlalchemy
+
+# Driver PostgreSQL utilisé en production sur Render
 psycopg2-binary
+
+# Serveur WSGI utilisé pour lancer Flask en production sur Render
 gunicorn
-flask-mail
+
+# Bibliothèque utilisée pour appeler les APIs externes :
+# Brevo pour les emails et Hugging Face pour DeepFace
 requests
-numpy
-resend
+
+# Client OpenAI compatible avec Groq, utilisé par le chatbot
 openai
+
+# Charge les variables d'environnement depuis un fichier .env
 python-dotenv
