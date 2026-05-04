@@ -2,36 +2,95 @@
 # IMPORTS
 # ============================================================
 
+# Module standard Python : accès aux variables d'environnement
 import os
+
+# Module standard Python : expressions régulières, utilisé pour valider le format des emails
 import re
+
+# Module standard Python : génération aléatoire, utilisé pour créer les codes de session
 import random
+
+# Module standard Python : accès aux lettres/chiffres, utilisé avec random pour les codes de session
 import string
+
+# Module standard Python : génération sécurisée de tokens, utilisé pour les liens de confirmation email
 import secrets
+
+# Module standard Python : manipulation de dates/heures avec fuseau horaire UTC
+from datetime import datetime, timezone, timedelta
+
+# Module standard Python : comptage d'occurrences, utilisé pour trouver les émotions dominantes
+from collections import Counter
+
+# Module standard Python : gestion des fuseaux horaires, utilisé pour convertir UTC vers heure française
+from zoneinfo import ZoneInfo
+
+# Module standard Python : conversion d'objets Python en JSON, utilisé pour stocker all_emotions en base
+import json
+
+# Chargement des variables d'environnement depuis un fichier .env en local
 from dotenv import load_dotenv
 
-# Charger les variables d'environnement dès le début
+# Flask : coeur de l'application web
+from flask import Flask
+
+# Flask : affichage des templates HTML
+from flask import render_template
+
+# Flask : récupération des données envoyées par les formulaires ou requêtes JSON
+from flask import request
+
+# Flask : redirections entre les routes
+from flask import redirect
+
+# Flask : génération dynamique des URLs des routes
+from flask import url_for
+
+# Flask : messages temporaires affichés à l'utilisateur
+from flask import flash
+
+# Flask : gestion de la session utilisateur côté serveur
+from flask import session
+
+# Flask : réponses JSON pour les routes AJAX/API
+from flask import jsonify
+
+# Werkzeug : hashage sécurisé des mots de passe à l'inscription
+from werkzeug.security import generate_password_hash
+
+# Werkzeug : vérification du mot de passe à la connexion
+from werkzeug.security import check_password_hash
+
+# SQLAlchemy : gestion des erreurs d'intégrité, par exemple doublon en base
+from sqlalchemy.exc import IntegrityError
+
+# SQLAlchemy : exécution de requêtes SQL brutes, utilisé pour ALTER TABLE
+from sqlalchemy import text
+
+# Requests : appels HTTP vers Brevo et vers le serveur DeepFace Hugging Face
+import requests
+
+# Modèles SQLAlchemy de l'application
+from models import (
+    db,
+    User,
+    Session,
+    Participation,
+    UserRole,
+    QCMResponse,
+    WebcamAnalysis,
+    Alert
+)
+
+# Fonction du chatbot Groq utilisée par la route /chatbot
+from chatbot import get_chatbot_response
+
+
+# Charger les variables d'environnement dès le démarrage
 load_dotenv()
 
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from flask_mail import Mail, Message
-from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import text
-from models import db, User, Session, Participation, UserRole, QCMResponse, WebcamAnalysis, Alert
-import base64
-import numpy as np
-import json
-from datetime import datetime, timezone, timedelta
-from collections import Counter # Counter permet de compter des occurrences dans une liste
-# type de données du module collection, module qui regroupe des  types de données qui ne sont pas automatiquement inclus
 
-from zoneinfo import ZoneInfo
-import requests
-import smtplib
-import ssl
-from email.message import EmailMessage
-import resend
-from chatbot import get_chatbot_response
 # ============================================================
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
