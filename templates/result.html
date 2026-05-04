@@ -7,28 +7,36 @@
     Page résultats professeur.
 
     Cette page contient :
-    - un résumé de la session
-    - une courbe principale d'engagement général
-    - un donut pour les émotions QCM
-    - un donut pour les émotions DeepFace
-    - les alertes en cas d'état émotionel collectif ou individuel "critique"
+    - un résumé de la session ;
+    - une courbe principale d'engagement général ;
+    - un donut pour les émotions QCM ;
+    - un donut pour les émotions DeepFace ;
+    - le mode moyennes si sélectionné ;
+    - le mode alertes si sélectionné.
 -->
 
 <div class="container results-page">
-    <div class="container results-page">
 
-    <!-- Données de session pour le JS -->
+    <!--
+        Données de session utilisées par result.js.
+
+        Ces seuils sont stockés dans des attributs data-* pour que le JavaScript
+        puisse les lire sans avoir besoin de refaire un calcul côté front.
+    -->
     <div id="sessionData"
          data-seuil-individuel="{{ (session_obj.seuil_individuel * 100) | round | int }}"
          data-seuil-classe="{{ (session_obj.seuil_classe * 100) | round | int }}"
          style="display:none;">
     </div>
 
-     <!-- ================= BANNIÈRE ALERTE DE CLASSE ================= -->
+
+    <!-- ================= BANNIÈRE ALERTE DE CLASSE ================= -->
+
     <!--
-        Uniquement visible si le mode "alertes" est actif.
-        Affichée / masquée dynamiquement par result.js selon l'état réel.
-        Masquée par défaut via style="display:none".
+        Cette bannière est présente uniquement si le mode "alertes" est actif.
+
+        Elle est masquée par défaut, puis affichée dynamiquement par result.js
+        si une alerte collective est détectée.
     -->
     {% if "alertes" in selected_modes %}
     <div id="class-alert-banner" style="display:none;">
@@ -40,12 +48,23 @@
                     <span id="class-alert-reason"></span>
                 </div>
             </div>
-            <button class="alert-banner-close" onclick="document.getElementById('class-alert-banner').style.display='none'">✕</button>
+
+            <!--
+                Le bouton masque visuellement la bannière.
+                result.js mémorise aussi cette fermeture pour éviter qu'elle revienne
+                immédiatement au prochain rafraîchissement.
+            -->
+            <button class="alert-banner-close"
+                    onclick="document.getElementById('class-alert-banner').style.display='none'">
+                ✕
+            </button>
         </div>
     </div>
     {% endif %}
 
+
     <!-- ================= EN-TÊTE ================= -->
+
     <div class="topbar">
         <div>
             <h1>Résultats de la session</h1>
@@ -56,18 +75,20 @@
         </div>
 
         <div class="results-actions">
-            <!--Bouton historique des alertes-->
+
+            <!-- Bouton vers l'historique des alertes, visible uniquement si le mode alertes est actif -->
             {% if "alertes" in selected_modes %}
             <a href="{{ url_for('session_alerts', session_id=session_obj.id) }}" class="btn secondary">
                 Historique des alertes
             </a>
             {% endif %}
-            <!-- Retour dashboard -->
+
+            <!-- Retour vers le dashboard professeur -->
             <a href="{{ url_for('professor_dashboard') }}" class="btn secondary">
                 Retour dashboard
             </a>
 
-            <!-- Fermeture session si encore active -->
+            <!-- Bouton de fermeture de session, affiché uniquement si la session est encore active -->
             {% if session_obj.is_active %}
             <form action="{{ url_for('end_session', session_id=session_obj.id) }}" method="POST">
                 <button type="submit" class="btn danger">
@@ -78,7 +99,13 @@
         </div>
     </div>
 
+
     <!-- ================= CARTES RÉCAPITULATIVES ================= -->
+
+    <!--
+        Ces cartes sont mises à jour automatiquement par result.js
+        via la route /session/<id>/results/data.
+    -->
     <div class="grid results-summary">
 
         <div class="card stat-card">
@@ -86,10 +113,13 @@
             <span class="stat-value">{{ participants_count }}</span>
         </div>
 
-       <div class="card stat-card" id="btn-active-participants" style="cursor: pointer;" onclick="openParticipantsModal()">
+        <div class="card stat-card"
+             id="btn-active-participants"
+             style="cursor: pointer;"
+             onclick="openParticipantsModal()">
             <span class="stat-label">Participants actifs</span>
             <span class="stat-value">{{ active_participants_count }}</span>
-      </div>
+        </div>
 
         <div class="card stat-card">
             <span class="stat-label">Réponses QCM</span>
@@ -102,12 +132,16 @@
         </div>
     </div>
 
+
     <!-- ================= MODE COURBES ================= -->
+
     {% if "courbes" in selected_modes %}
 
     <!--
-        Ce bloc stocke les données JSON envoyées par Flask.
-        Le JavaScript les lit ensuite pour construire les graphiques.
+        Données initiales envoyées par Flask.
+
+        Le JavaScript lit ces attributs data-* au chargement de la page
+        pour afficher les graphiques immédiatement, avant le premier refresh.
     -->
     <div
         id="resultsPageData"
@@ -122,6 +156,7 @@
     <div class="results-grid">
 
         <!-- ================= COURBE PRINCIPALE ================= -->
+
         <section class="card chart-card large">
             <div class="chart-header">
                 <div>
@@ -138,7 +173,9 @@
             </div>
         </section>
 
-        <!-- ================= DEUX DONUTS ================= -->
+
+        <!-- ================= DONUTS QCM ET DEEPFACE ================= -->
+
         <div class="results-grid-two">
 
             <section class="card chart-card">
@@ -176,55 +213,63 @@
 
     {% endif %}
 
+
     <!-- ================= MODE ALERTES ================= -->
+
     {% if "alertes" in selected_modes %}
     <section class="card">
         <div class="chart-header">
             <div>
                 <h2>Mode alertes</h2>
-                <p>Les alertes se déclenchent automatiquement si l'un des seuils suivants est dépassé.</p>
+                <p>
+                    Les alertes se déclenchent automatiquement si l'un des seuils suivants est dépassé.
+                </p>
             </div>
         </div>
 
-    <div class="alert-thresholds">
+        <!--
+            Rappel des seuils configurés par le professeur à la création de la session.
+        -->
+        <div class="alert-thresholds">
 
-        <div class="alert-threshold-item individual">
-            <span class="alert-threshold-label">Individuel · QCM</span>
-            <span class="alert-threshold-value">
-                {{ (session_obj.seuil_individuel * 100) | round | int }}% réponses négatives
-            </span>
+            <div class="alert-threshold-item individual">
+                <span class="alert-threshold-label">Individuel · QCM</span>
+                <span class="alert-threshold-value">
+                    {{ (session_obj.seuil_individuel * 100) | round | int }}% réponses négatives
+                </span>
+            </div>
+
+            <div class="alert-threshold-item individual">
+                <span class="alert-threshold-label">Individuel · Webcam</span>
+                <span class="alert-threshold-value">
+                    {{ (session_obj.seuil_individuel * 100) | round | int }}% émotions négatives
+                </span>
+            </div>
+
+            <div class="alert-threshold-item class">
+                <span class="alert-threshold-label">Classe · Snapshot QCM</span>
+                <span class="alert-threshold-value">
+                    {{ (session_obj.seuil_classe * 100) | round | int }}% classe démotivée
+                </span>
+            </div>
+
+            <div class="alert-threshold-item class">
+                <span class="alert-threshold-label">Classe · Accumulation</span>
+                <span class="alert-threshold-value">
+                    {{ (session_obj.seuil_classe * 100) | round | int }}% étudiants en alerte
+                </span>
+            </div>
+
         </div>
-
-        <div class="alert-threshold-item individual">
-            <span class="alert-threshold-label">Individuel · Webcam</span>
-            <span class="alert-threshold-value">
-                {{ (session_obj.seuil_individuel * 100) | round | int }}% émotions négatives
-            </span>
-        </div>
-
-        <div class="alert-threshold-item class">
-            <span class="alert-threshold-label">Classe · Snapshot QCM</span>
-            <span class="alert-threshold-value">
-                {{ (session_obj.seuil_classe * 100) | round | int }}% classe démotivée
-            </span>
-        </div>
-
-        <div class="alert-threshold-item class">
-            <span class="alert-threshold-label">Classe · Accumulation</span>
-            <span class="alert-threshold-value">
-                {{ (session_obj.seuil_classe * 100) | round | int }}% étudiants en alerte
-            </span>
-        </div>
-
-    </div>
-
     </section>
     {% endif %}
 
+
     <!-- ================= MODE MOYENNES ================= -->
+
     {% if "moyennes" in selected_modes %}
     <section class="card" id="moyennes-section">
-    
+
         <div class="chart-header">
             <div>
                 <h2>Mode moyennes</h2>
@@ -234,11 +279,19 @@
                 </p>
             </div>
         </div>
-    
+
         <!--
-            ENCADRÉ MOYENNE GÉNÉRALE
-            Dégradé violet/bleu reprenant les tons de l'app (cf. base.css --primary / --secondary).
-            Les trois <span> sont remplis dynamiquement par result.js via updateMoyennes().
+            Encadré des moyennes globales.
+
+            Le backend renvoie des valeurs internes sans accents :
+            - motive
+            - stresse
+            - negatif
+
+            result.js les transforme ensuite en libellés lisibles :
+            - Motivé
+            - Stressé
+            - Négatif
         -->
         <div style="
             margin-top: 16px;
@@ -250,84 +303,103 @@
             flex-direction: column;
             gap: 12px;
         ">
-            <!-- Mesure subjective : émotions issues des QCM uniquement -->
+            <!-- Mesure subjective : basée uniquement sur les réponses QCM -->
             <p style="margin:0; font-size:0.95rem;">
                 L'état émotionnel moyen de la mesure <strong>subjective</strong> est :
                 <span id="avg-subjective" style="color:#a78bfa; font-weight:bold;">…</span>
             </p>
-    
-            <!-- Mesure objective : émotions issues de DeepFace uniquement -->
+
+            <!-- Mesure objective : basée uniquement sur les analyses DeepFace -->
             <p style="margin:0; font-size:0.95rem;">
                 L'état émotionnel moyen de la mesure <strong>objective</strong> est :
                 <span id="avg-objective" style="color:#a78bfa; font-weight:bold;">…</span>
             </p>
-    
-            <!-- Mesure générale : combinaison QCM + DeepFace via catégories communes -->
+
+            <!--
+                Mesure générale :
+                le backend combine QCM + DeepFace en tendances communes :
+                positif, neutre ou negatif.
+            -->
             <p style="margin:0; font-size:0.95rem;">
                 L'état émotionnel <strong>général</strong> est :
                 <span id="avg-general" style="color:#ec4899; font-weight:bold; font-size:1.05rem;">…</span>
             </p>
         </div>
-    
+
+
         <!--
-            TABLEAU INDIVIDUEL
-            Une ligne par étudiant (anonyme ou non).
-            Rempli dynamiquement par result.js via updateMoyennes().
+            Tableau individuel.
+
+            Une ligne est générée par étudiant dans result.js.
+            Le tableau respecte l'anonymat choisi par l'étudiant.
         -->
         <div style="margin-top: 24px; overflow-x: auto;">
             <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-    
+
                 <thead>
                     <tr style="color:var(--muted); text-align:left; border-bottom:1px solid var(--border);">
                         <th style="padding:8px 12px;">Étudiant</th>
                         <th style="padding:8px 12px;">Moy. QCM</th>
                         <th style="padding:8px 12px;">Moy. DeepFace</th>
-                        <th style="padding:8px 12px;">Émotion dominante</th>
+                        <th style="padding:8px 12px;">Tendance dominante</th>
                         <th style="padding:8px 12px;">Réponses QCM</th>
                         <th style="padding:8px 12px;">Analyses webcam</th>
                     </tr>
                 </thead>
-    
-                <!-- Corps rempli dynamiquement par JS -->
+
+                <!-- Corps rempli dynamiquement par result.js -->
                 <tbody id="tbody-individuals">
                     <tr>
-                        <td colspan="4" style="padding:16px; color:var(--muted); text-align:center;">
+                        <td colspan="6" style="padding:16px; color:var(--muted); text-align:center;">
                             Chargement…
                         </td>
                     </tr>
                 </tbody>
-    
+
             </table>
         </div>
-    
+
     </section>
     {% endif %}
 
 </div>
 
-<!-- Container des popups alertes individuelles -->
-<!-- Injecté ici uniquement si le mode alertes est actif -->
+
+<!-- ================= POPUPS ALERTES INDIVIDUELLES ================= -->
+
+<!--
+    Conteneur utilisé par result.js pour injecter les popups d'alertes individuelles.
+    Il n'est présent que si le mode alertes est actif.
+-->
 {% if "alertes" in selected_modes %}
 <div id="alert-popups-container"></div>
 {% endif %}
 
 
+<!-- ================= SCRIPTS ================= -->
 
-<!-- Librairie de graphiques -->
+<!-- Librairie Chart.js utilisée pour la courbe et les donuts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- Script spécifique de la page résultats -->
+<!-- Script spécifique à la page résultats -->
 <script src="{{ url_for('static', filename='js/result.js') }}"></script>
 
 
-<!-- Affiche la liste des étudiants actuellement présents dans une session,
-    sous forme de tableau (ID, Nom, Prénom, Heure d'arrivée). -->
+<!-- ================= MODALE PARTICIPANTS ACTIFS ================= -->
+
+<!--
+    Modale affichant les participants actuellement présents dans la session.
+
+    Elle est ouverte par le clic sur la carte "Participants actifs".
+    Le contenu du tableau peut être rempli dynamiquement si une route dédiée existe.
+-->
 <div id="active-participants-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content card">
         <div class="modal-header">
             <h2>Participants en cours de session</h2>
             <button id="close-modal" class="btn-close">&times;</button>
         </div>
+
         <div class="modal-body">
             <div class="table-container">
                 <table class="participants-table">
@@ -339,6 +411,7 @@
                             <th>Heure d'arrivée</th>
                         </tr>
                     </thead>
+
                     <tbody id="active-participants-list">
                         <tr>
                             <td colspan="4" style="text-align:center; padding:20px; color:var(--muted);">
@@ -351,8 +424,5 @@
         </div>
     </div>
 </div>
-
-
-
 
 {% endblock %}
