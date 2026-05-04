@@ -229,11 +229,15 @@ def normalize_qcm_emotion_label(raw_emotion):
     Returns:
         str: émotion normalisée
     """
+
+    # Si aucune émotion n'est reçue, on retourne une valeur par défaut
     if not raw_emotion:
         return "Inconnu"
 
+    # Nettoie la valeur reçue pour éviter les problèmes de majuscules ou d'espaces
     emotion = raw_emotion.strip().lower()
 
+    # Association entre les valeurs stockées en base et les libellés affichés côté professeur
     mapping = {
         "motive": "Motivé",
         "neutre": "Neutre",
@@ -242,7 +246,9 @@ def normalize_qcm_emotion_label(raw_emotion):
         "demotive": "Démotivé"
     }
 
+    # Retourne le libellé normalisé si connu, sinon retourne la valeur brute
     return mapping.get(emotion, raw_emotion)
+
 
 def normalize_webcam_emotion_label(raw_emotion):
     """
@@ -255,11 +261,15 @@ def normalize_webcam_emotion_label(raw_emotion):
     Returns:
         str: émotion normalisée en français
     """
+
+    # Si DeepFace ne renvoie aucune émotion, on affiche une valeur neutre
     if not raw_emotion:
         return "Inconnu"
 
+    # Nettoie l'émotion pour faciliter la comparaison avec le mapping
     emotion = raw_emotion.strip().lower()
 
+    # Traduction des émotions DeepFace en libellés français pour l'affichage
     mapping = {
         "happy": "Joie",
         "neutral": "Neutre",
@@ -270,8 +280,8 @@ def normalize_webcam_emotion_label(raw_emotion):
         "disgust": "Dégoût"
     }
 
+    # Retourne la traduction si elle existe, sinon garde la valeur d'origine
     return mapping.get(emotion, raw_emotion)
-
 
 
 def qcm_engagement_score(response):
@@ -288,6 +298,9 @@ def qcm_engagement_score(response):
     Returns:
         float: score d'engagement sur 100
     """
+
+    # Score de base associé à chaque émotion QCM
+    # Plus l'émotion est positive, plus le score est élevé
     base_scores = {
         "motive": 100,
         "neutre": 60,
@@ -296,14 +309,23 @@ def qcm_engagement_score(response):
         "demotive": 10
     }
 
+    # Récupère l'émotion de la réponse en évitant les erreurs si elle est vide
     emotion = (response.emotion or "").strip().lower()
+
+    # Si l'émotion n'est pas reconnue, on applique un score neutre par défaut
     base_score = base_scores.get(emotion, 50)
 
+    # Récupère l'intensité choisie par l'étudiant.
+    # Si aucune valeur n'existe, on prend 3 comme intensité neutre.
     slider = response.slider_value if response.slider_value is not None else 3
+
+    # Sécurise la valeur pour qu'elle reste toujours entre 1 et 5
     slider = max(1, min(slider, 5))
 
+    # Transforme le slider en coefficient entre 0.2 et 1.0
     slider_factor = slider / 5.0
 
+    # Applique la pondération et arrondit le résultat à 2 décimales
     return round(base_score * slider_factor, 2)
 
 
@@ -321,6 +343,8 @@ def webcam_engagement_score(analysis):
     Returns:
         float: score d'engagement sur 100
     """
+
+    # Score de base attribué à chaque émotion détectée par DeepFace
     base_scores = {
         "happy": 90,
         "neutral": 60,
@@ -331,14 +355,23 @@ def webcam_engagement_score(analysis):
         "disgust": 10
     }
 
+    # Récupère l'émotion dominante détectée par DeepFace
     emotion = (analysis.dominant_emotion or "").strip().lower()
+
+    # Si l'émotion n'est pas reconnue, on utilise un score neutre par défaut
     base_score = base_scores.get(emotion, 50)
 
+    # Récupère le niveau de confiance DeepFace.
+    # Si la confiance est absente, on prend 50 % par défaut.
     confidence = analysis.confidence if analysis.confidence is not None else 50.0
+
+    # Sécurise la confiance pour qu'elle reste entre 0 et 100
     confidence = max(0.0, min(confidence, 100.0))
 
+    # Transforme la confiance en coefficient entre 0 et 1
     confidence_factor = confidence / 100.0
 
+    # Applique la pondération par confiance et arrondit le résultat
     return round(base_score * confidence_factor, 2)
 
 
@@ -367,6 +400,8 @@ def build_session_curve_data(session_id):
     # ========================
     # 1. Récupération QCM
     # ========================
+
+    # Récupère toutes les réponses QCM de la session, triées de la plus ancienne à la plus récente
     qcm_rows = QCMResponse.query.filter_by(
         session_id=session_id
     ).order_by(QCMResponse.answered_at.asc()).all()
@@ -374,6 +409,8 @@ def build_session_curve_data(session_id):
     # ========================
     # 2. Récupération webcam
     # ========================
+
+    # Récupère toutes les analyses webcam de la session, triées chronologiquement
     webcam_rows = WebcamAnalysis.query.filter_by(
         session_id=session_id
     ).order_by(WebcamAnalysis.analyzed_at.asc()).all()
@@ -381,13 +418,17 @@ def build_session_curve_data(session_id):
     # ========================
     # 3. Structure de la courbe
     # ========================
+
+    # Dictionnaire utilisé pour regrouper les scores par minute
     # clé = minute locale "YYYY-MM-DD HH:MM"
-    # valeur = liste des scores de cette minute
+    # valeur = liste des scores calculés pendant cette minute
     time_buckets = {}
 
     # ========================
     # 4. Structures des donuts
     # ========================
+
+    # Initialise toutes les émotions QCM à 0 pour garantir leur présence dans le graphique
     qcm_emotion_counts = {
         "Motivé": 0,
         "Neutre": 0,
@@ -396,6 +437,7 @@ def build_session_curve_data(session_id):
         "Démotivé": 0
     }
 
+    # Initialise toutes les émotions webcam à 0 pour le donut DeepFace
     webcam_emotion_counts = {
         "Joie": 0,
         "Neutre": 0,
@@ -409,62 +451,89 @@ def build_session_curve_data(session_id):
     # ========================
     # 5. Traitement QCM
     # ========================
+
     for row in qcm_rows:
+
+        # Ignore les réponses sans date pour éviter une erreur de conversion horaire
         if not row.answered_at:
             continue
 
-        # Conversion UTC -> heure de Paris
+        # Convertit la date UTC stockée en base vers l'heure française
         local_dt = row.answered_at.astimezone(ZoneInfo("Europe/Paris"))
+
+        # Regroupe les données par minute pour lisser la courbe
         bucket = local_dt.strftime("%Y-%m-%d %H:%M")
 
+        # Crée la liste de scores pour cette minute si elle n'existe pas encore
         if bucket not in time_buckets:
             time_buckets[bucket] = []
 
-        # Ajout score d'engagement
+        # Convertit la réponse QCM en score d'engagement
         score = qcm_engagement_score(row)
+
+        # Ajoute le score dans le groupe correspondant à sa minute
         time_buckets[bucket].append(score)
 
-        # Comptage émotion QCM
+        # Normalise l'émotion pour l'afficher correctement dans le donut QCM
         normalized = normalize_qcm_emotion_label(row.emotion)
+
+        # Incrémente le compteur uniquement si l'émotion fait partie des labels prévus
         if normalized in qcm_emotion_counts:
             qcm_emotion_counts[normalized] += 1
 
     # ========================
     # 6. Traitement webcam
     # ========================
+
     for row in webcam_rows:
+
+        # Ignore les analyses sans date pour éviter une erreur de conversion horaire
         if not row.analyzed_at:
             continue
 
-        # Conversion UTC -> heure de Paris
+        # Convertit la date UTC de l'analyse en heure française
         local_dt = row.analyzed_at.astimezone(ZoneInfo("Europe/Paris"))
+
+        # Regroupe les analyses par minute, comme pour les réponses QCM
         bucket = local_dt.strftime("%Y-%m-%d %H:%M")
 
+        # Crée le groupe de scores si cette minute n'existe pas encore
         if bucket not in time_buckets:
             time_buckets[bucket] = []
 
-        # Ajout score d'engagement
+        # Convertit l'analyse webcam en score d'engagement
         score = webcam_engagement_score(row)
+
+        # Ajoute le score webcam dans la même structure que les scores QCM
         time_buckets[bucket].append(score)
 
-        # Comptage émotion webcam
+        # Traduit l'émotion DeepFace pour l'affichage dans le donut webcam
         normalized = normalize_webcam_emotion_label(row.dominant_emotion)
+
+        # Incrémente le compteur si l'émotion fait partie des catégories prévues
         if normalized in webcam_emotion_counts:
             webcam_emotion_counts[normalized] += 1
 
     # ========================
     # 7. Construction courbe finale
     # ========================
+
+    # Trie les minutes dans l'ordre chronologique
     sorted_keys = sorted(time_buckets.keys())
 
+    # Labels affichés sur l'axe X du graphique
     engagement_labels = []
+
+    # Valeurs moyennes affichées sur la courbe
     engagement_values = []
 
     for key in sorted_keys:
         scores = time_buckets[key]
+
+        # Calcule la moyenne des scores de la minute
         avg_score = round(sum(scores) / len(scores), 2) if scores else 0
 
-        # On n'affiche que HH:MM dans le graphe
+        # Pour l'affichage, on garde uniquement l'heure et les minutes
         display_label = key[-5:]
 
         engagement_labels.append(display_label)
@@ -473,6 +542,8 @@ def build_session_curve_data(session_id):
     # ========================
     # 8. Retour final
     # ========================
+
+    # Retourne toutes les données nécessaires aux graphiques et aux compteurs
     return {
         "engagement_labels": engagement_labels,
         "engagement_values": engagement_values,
@@ -483,7 +554,7 @@ def build_session_curve_data(session_id):
         "qcm_count": len(qcm_rows),
         "webcam_count": len(webcam_rows)
     }
-
+    
 # ============================================================
 # MOYENNES ÉMOTIONNELLES (MODE MOYENNES)
 # ============================================================
