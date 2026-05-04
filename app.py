@@ -97,43 +97,24 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Récupération de l'URL Render (Variable d'environnement)
 uri = os.environ.get("DATABASE_URL")
 
 if uri:
-    # Correction indispensable du dialecte pour PostgreSQL
+    # Render fournit parfois une URL commençant par postgres://,
+    # alors que SQLAlchemy attend postgresql://
     if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
-        
-    # Forcer le chiffrement SSL exigé par Render
+
+    # Render/PostgreSQL nécessite souvent sslmode=require
     if "sslmode" not in uri:
         if "?" in uri:
             uri += "&sslmode=require"
         else:
             uri += "?sslmode=require"
-            
+
     app.config["SQLALCHEMY_DATABASE_URI"] = uri
 else:
-    # Fallback sur SQLite pour vos tests en local
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
-
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-# ============================================================
-# INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
-# ============================================================
-
-app = Flask(__name__)
-
-# Récupération de l'URL Render (Variable d'environnement)
-uri = os.environ.get("DATABASE_URL")
-
-if uri:
-    # Correction indispensable du dialecte pour PostgreSQL
-    if uri.startswith("postgres://"):
-        uri = uri.replace("postgres://", "postgresql://", 1)
-    app.config["SQLALCHEMY_DATABASE_URI"] = uri
-else:
-    # Fallback sur SQLite pour tes tests en local sur ton PC
+    # Base SQLite utilisée uniquement en local si DATABASE_URL n'existe pas
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -145,9 +126,9 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_size": 5,
     "max_overflow": 2,
 }
-# Utilisation d'une variable d'env pour la sécurité (Cybersécurité)
+
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-key-a-changer-en-prod")
-app.config["SESSION_COOKIE_SAMESITE"] = 'Lax'
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = 7200
 
 # ============================================================
