@@ -95,70 +95,116 @@ load_dotenv()
 # INITIALISATION & CONFIGURATION OPTIMISÉE POUR RENDER
 # ============================================================
 
+# Création de l'application Flask
 app = Flask(__name__)
 
+# Récupère l'URL de la base de données depuis les variables d'environnement.
+# Sur Render, cette variable est automatiquement fournie pour PostgreSQL.
 uri = os.environ.get("DATABASE_URL")
 
 if uri:
-    # Render fournit parfois une URL commençant par postgres://,
-    # alors que SQLAlchemy attend postgresql://
+    # Render peut fournir une URL qui commence par postgres://.
+    # SQLAlchemy attend plutôt postgresql://, donc on corrige le préfixe si besoin.
     if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
 
-    # Render/PostgreSQL nécessite souvent sslmode=require
+    # En production, PostgreSQL sur Render demande généralement une connexion SSL.
+    # Si sslmode=require n'est pas déjà présent dans l'URL, on l'ajoute.
     if "sslmode" not in uri:
         if "?" in uri:
             uri += "&sslmode=require"
         else:
             uri += "?sslmode=require"
 
+    # Configuration de SQLAlchemy avec l'URL PostgreSQL de Render
     app.config["SQLALCHEMY_DATABASE_URI"] = uri
 else:
-    # Base SQLite utilisée uniquement en local si DATABASE_URL n'existe pas
+    # Si aucune URL PostgreSQL n'est trouvée, on utilise SQLite en local.
+    # Cela permet de lancer l'application sur son PC sans config Render.
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 
+# Désactive le suivi automatique des modifications SQLAlchemy.
+# Cela évite des warnings et économise un peu de mémoire.
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# Options de connexion à la base.
+# Elles permettent de rendre la connexion PostgreSQL plus stable sur Render.
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    # Vérifie que la connexion est encore active avant de l'utiliser.
     "pool_pre_ping": True,
+
+    # Recycle les connexions régulièrement pour éviter les connexions expirées.
     "pool_recycle": 300,
+
+    # Temps maximum d'attente pour récupérer une connexion disponible.
     "pool_timeout": 30,
+
+    # Nombre de connexions gardées ouvertes dans le pool.
     "pool_size": 5,
+
+    # Nombre de connexions supplémentaires autorisées temporairement.
     "max_overflow": 2,
 }
 
+# Clé secrète utilisée par Flask pour sécuriser les sessions utilisateur.
+# En production, elle doit venir d'une variable d'environnement.
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-key-a-changer-en-prod")
+
+# Protection du cookie de session.
+# Lax permet de garder un comportement compatible tout en limitant certains risques CSRF.
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+# Durée de validité d'une session permanente, ici 7200 secondes = 2 heures.
 app.config["PERMANENT_SESSION_LIFETIME"] = 7200
 
+
 # ============================================================
-# CONFIGURATION EMAIL
+# CONFIGURATION BASE DE DONNÉES
 # ============================================================
 
-
-# Liaison de SQLAlchemy à l'application
+# Lie l'objet SQLAlchemy à l'application Flask.
+# À partir de ce moment, db peut utiliser la configuration de l'application.
 db.init_app(app)
 
-# Création automatique des tables au démarrage du serveur
+# Crée automatiquement les tables au démarrage si elles n'existent pas.
+# Ce bloc est utile sur Render pour éviter d'avoir à lancer une commande manuelle.
 with app.app_context():
     try:
+        # Crée les tables définies dans models.py si elles n'existent pas encore.
         db.create_all()
+
         print("Base de données connectée et tables créées/vérifiées !")
+
+        # Inspecte la structure actuelle de la base de données.
+        # Cela permet de vérifier si certaines colonnes existent déjà.
         inspector = db.inspect(db.engine)
+
+        # Récupère la liste des colonnes présentes dans la table users.
         existing_columns = [col["name"] for col in inspector.get_columns("users")]
- 
+
+        # Ouvre une connexion directe pour exécuter des requêtes SQL brutes.
         with db.engine.connect() as conn:
+
+            # Ajoute la colonne email_verified si elle n'existe pas encore.
+            # Elle permet de savoir si l'utilisateur a confirmé son email.
             if "email_verified" not in existing_columns:
                 conn.execute(text("ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE"))
-                print(" Colonne email_verified ajoutée.")
+                print("Colonne email_verified ajoutée.")
+
+            # Ajoute la colonne verification_token si elle n'existe pas encore.
+            # Elle sert à stocker le token envoyé par mail pour confirmer le compte.
             if "verification_token" not in existing_columns:
                 conn.execute(text("ALTER TABLE users ADD COLUMN verification_token VARCHAR(100)"))
                 print("Colonne verification_token ajoutée.")
+
+            # Valide les éventuelles modifications SQL effectuées dans ce bloc.
             conn.commit()
- 
+
     except Exception as e:
-        print(f" Erreur lors de l'initialisation de la base : {e}")
- 
+        # Affiche l'erreur dans les logs sans faire planter immédiatement l'application.
+        # Utile pour diagnostiquer un problème de connexion ou de migration.
+        print(f"Erreur lors de l'initialisation de la base : {e}")
+
 
 # ============================================================
 # FONCTIONS UTILITAIRES
