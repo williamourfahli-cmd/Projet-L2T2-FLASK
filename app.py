@@ -554,6 +554,117 @@ def build_session_curve_data(session_id):
         "qcm_count": len(qcm_rows),
         "webcam_count": len(webcam_rows)
     }
+
+def build_session_average_data(session_id):
+    """
+    Calcule les moyennes émotionnelles pour le mode moyennes.
+
+    Retourne :
+    - moyenne_subjective : émotion dominante QCM de la session
+    - moyenne_objective  : émotion dominante DeepFace de la session
+    - moyenne_generale   : tendance dominante combinée (positif / neutre / negatif)
+    - individuals        : liste des étudiants avec leurs stats individuelles
+    """
+
+    # Récupère tous les participants de la session
+    participations = Participation.query.filter_by(session_id=session_id).all()
+
+    # Listes pour calculer les moyennes globales de la session
+    all_qcm_emotions = []
+    all_webcam_emotions = []
+    all_general_tendances = []
+
+    individuals = []
+
+    for p in participations:
+        user_id = p.student_id
+        user = User.query.get(user_id)
+
+        # Récupère toutes les réponses QCM de l'étudiant pour cette session
+        qcm_responses = QCMResponse.query.filter_by(
+            session_id=session_id,
+            user_id=user_id
+        ).all()
+
+        # Récupère toutes les analyses webcam de l'étudiant pour cette session
+        webcam_analyses = WebcamAnalysis.query.filter_by(
+            session_id=session_id,
+            user_id=user_id
+        ).all()
+
+        # Émotions brutes QCM de cet étudiant
+        qcm_emotions = [
+            r.emotion.strip().lower()
+            for r in qcm_responses
+            if r.emotion
+        ]
+
+        # Émotions brutes webcam de cet étudiant
+        webcam_emotions = [
+            a.dominant_emotion.strip().lower()
+            for a in webcam_analyses
+            if a.dominant_emotion
+        ]
+
+        # Émotion QCM dominante de cet étudiant
+        emotion_qcm = compute_dominant(qcm_emotions) if qcm_emotions else None
+
+        # Émotion webcam dominante de cet étudiant
+        emotion_webcam = compute_dominant(webcam_emotions) if webcam_emotions else None
+
+        # Combine QCM et webcam traduit pour calculer la tendance générale
+        toutes_emotions = qcm_emotions + [
+            translate_emotion(e) for e in webcam_emotions if translate_emotion(e)
+        ]
+        tendances = [
+            emotion_category(e) for e in toutes_emotions
+            if emotion_category(e)
+        ]
+        emotion_dominante = compute_dominant(tendances) if tendances else None
+
+        # Ajoute aux listes globales pour les moyennes de session
+        all_qcm_emotions.extend(qcm_emotions)
+        all_webcam_emotions.extend(webcam_emotions)
+        if emotion_dominante:
+            all_general_tendances.append(emotion_dominante)
+
+        # Détermine si l'étudiant est anonyme
+        anonymous = p.anonymous if hasattr(p, "anonymous") else False
+
+        # Construit le nom affiché
+        name = "Anonyme"
+        if user and not anonymous:
+            name = f"{user.first_name} {user.last_name}"
+
+        individuals.append({
+            "user_id": user_id,
+            "name": name,
+            "anonymous": anonymous,
+            "emotion_qcm": emotion_qcm,
+            "emotion_webcam": emotion_webcam,
+            "emotion_dominante": emotion_dominante,
+            "nb_qcm": len(qcm_responses),
+            "nb_webcam": len(webcam_analyses),
+        })
+
+    # Calcule la moyenne subjective globale (QCM)
+    moyenne_subjective = compute_dominant(all_qcm_emotions) if all_qcm_emotions else None
+
+    # Calcule la moyenne objective globale (DeepFace)
+    all_webcam_translated = [
+        translate_emotion(e) for e in all_webcam_emotions if translate_emotion(e)
+    ]
+    moyenne_objective = compute_dominant(all_webcam_translated) if all_webcam_translated else None
+
+    # Calcule la tendance générale de la session
+    moyenne_generale = compute_dominant(all_general_tendances) if all_general_tendances else None
+
+    return {
+        "moyenne_subjective": moyenne_subjective,
+        "moyenne_objective": moyenne_objective,
+        "moyenne_generale": moyenne_generale,
+        "individuals": individuals,
+    }
     
 # ============================================================
 # MOYENNES ÉMOTIONNELLES (MODE MOYENNES)
