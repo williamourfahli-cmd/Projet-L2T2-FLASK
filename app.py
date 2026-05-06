@@ -561,18 +561,20 @@ def build_session_average_data(session_id):
 
     Retourne :
     - moyenne_subjective : émotion dominante QCM de la session
-    - moyenne_objective  : émotion dominante DeepFace de la session
-    - moyenne_generale   : tendance dominante combinée (positif / neutre / negatif)
-    - individuals        : liste des étudiants avec leurs stats individuelles
+    - moyenne_objective  : émotion dominante DeepFace traduite de la session
+    - moyenne_generale   : émotion dominante globale QCM + DeepFace
+    - individuals        : liste des étudiants avec leurs statistiques individuelles
     """
 
     # Récupère tous les participants de la session
     participations = Participation.query.filter_by(session_id=session_id).all()
 
-    # Listes pour calculer les moyennes globales de la session
+    # Listes utilisées pour calculer les moyennes globales de la session
     all_qcm_emotions = []
     all_webcam_emotions = []
+    all_general_emotions = []
 
+    # Liste finale envoyée au frontend pour remplir le tableau individuel
     individuals = []
 
     for p in participations:
@@ -591,45 +593,69 @@ def build_session_average_data(session_id):
             user_id=user_id
         ).all()
 
-        # Émotions brutes QCM de cet étudiant
+        # Émotions QCM brutes stockées en base.
+        # Elles sont déjà dans le format interne du projet :
+        # motive, neutre, ennuye, stresse, demotive.
         qcm_emotions = [
             r.emotion.strip().lower()
             for r in qcm_responses
             if r.emotion
         ]
 
-        # Émotions brutes webcam de cet étudiant
+        # Émotions DeepFace traduites vers les valeurs internes du projet.
+        # Exemple :
+        # happy   -> motive
+        # fear    -> stresse
+        # angry   -> en colere
+        # neutral -> neutre
         webcam_emotions = [
-            a.dominant_emotion.strip().lower()
+            translate_emotion(a.dominant_emotion.strip().lower())
             for a in webcam_analyses
             if a.dominant_emotion
+            and translate_emotion(a.dominant_emotion.strip().lower())
         ]
 
         # Émotion QCM dominante de cet étudiant
-        emotion_qcm = compute_dominant(qcm_emotions) if qcm_emotions else None
+        emotion_qcm = (
+            compute_dominant(qcm_emotions)
+            if qcm_emotions
+            else None
+        )
 
         # Émotion webcam dominante de cet étudiant
-        emotion_webcam = compute_dominant(webcam_emotions) if webcam_emotions else None
+        emotion_webcam = (
+            compute_dominant(webcam_emotions)
+            if webcam_emotions
+            else None
+        )
 
-        # Combine QCM et webcam traduit pour calculer la tendance générale
-        toutes_emotions = qcm_emotions + [
-            translate_emotion(e) for e in webcam_emotions if translate_emotion(e)
-        ]
-        
-        emotion_dominante = compute_dominant(toutes_emotions) if toutes_emotions else None
+        # Émotion dominante globale de cet étudiant.
+        # On combine les émotions QCM et les émotions DeepFace traduites.
+        # Ici on ne transforme plus en positif / négatif.
+        emotions_individuelles = qcm_emotions + webcam_emotions
 
-        # Ajoute aux listes globales pour les moyennes de session
+        emotion_dominante = (
+            compute_dominant(emotions_individuelles)
+            if emotions_individuelles
+            else None
+        )
+
+        # Ajoute les émotions de cet étudiant aux listes globales
         all_qcm_emotions.extend(qcm_emotions)
         all_webcam_emotions.extend(webcam_emotions)
+        all_general_emotions.extend(emotions_individuelles)
 
-        # Détermine si l'étudiant est anonyme
+        # Récupère le choix d'anonymat de l'étudiant
         anonymous = p.anonymous if hasattr(p, "anonymous") else False
 
-        # Construit le nom affiché
+        # Construit le nom affiché dans le tableau.
+        # Si l'étudiant est anonyme, son identité n'est pas affichée côté professeur.
         name = "Anonyme"
+
         if user and not anonymous:
             name = f"{user.first_name} {user.last_name}"
 
+        # Ajoute la ligne individuelle au résultat final
         individuals.append({
             "user_id": user_id,
             "name": name,
@@ -641,18 +667,29 @@ def build_session_average_data(session_id):
             "nb_webcam": len(webcam_analyses),
         })
 
-    # Calcule la moyenne subjective globale (QCM)
-    moyenne_subjective = compute_dominant(all_qcm_emotions) if all_qcm_emotions else None
+    # Moyenne subjective globale :
+    # émotion dominante issue uniquement des réponses QCM
+    moyenne_subjective = (
+        compute_dominant(all_qcm_emotions)
+        if all_qcm_emotions
+        else None
+    )
 
-    # Calcule la moyenne objective globale (DeepFace)
-    all_webcam_translated = [
-        translate_emotion(e) for e in all_webcam_emotions if translate_emotion(e)
-    ]
-    moyenne_objective = compute_dominant(all_webcam_translated) if all_webcam_translated else None
+    # Moyenne objective globale :
+    # émotion dominante issue uniquement de DeepFace, après traduction
+    moyenne_objective = (
+        compute_dominant(all_webcam_emotions)
+        if all_webcam_emotions
+        else None
+    )
 
-    # Calcule la tendance générale de la session
-    all_emotions_reelles = all_qcm_emotions + all_webcam_translated
-    moyenne_generale = compute_dominant(all_emotions_reelles) if all_emotions_reelles else None
+    # Moyenne générale :
+    # émotion dominante globale en combinant QCM + DeepFace traduit
+    moyenne_generale = (
+        compute_dominant(all_general_emotions)
+        if all_general_emotions
+        else None
+    )
 
     return {
         "moyenne_subjective": moyenne_subjective,
