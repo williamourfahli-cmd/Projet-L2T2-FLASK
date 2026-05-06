@@ -719,7 +719,7 @@ def compute_dominant(emotions_list):
 
 
 """def emotion_category(emotion):
-    """
+
     Convertit une émotion brute ou traduite en tendance commune.
 
     Exemples :
@@ -732,7 +732,7 @@ def compute_dominant(emotions_list):
 
     Returns:
         str | None: tendance commune, ou None si l'émotion est vide/inconnue
-    """
+
 
     # Si aucune émotion n'est fournie, on ne peut pas la catégoriser
     if not emotion:
@@ -743,7 +743,6 @@ def compute_dominant(emotions_list):
 
     # Retourne la tendance commune si l'émotion existe dans le mapping
     return EMOTION_MAP.get(emotion)"""
-
 
 # ============================================================
 # TRADUCTION DES ÉMOTIONS DEEPFACE
