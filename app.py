@@ -572,7 +572,6 @@ def build_session_average_data(session_id):
     # Listes pour calculer les moyennes globales de la session
     all_qcm_emotions = []
     all_webcam_emotions = []
-    all_general_tendances = []
 
     individuals = []
 
@@ -616,17 +615,12 @@ def build_session_average_data(session_id):
         toutes_emotions = qcm_emotions + [
             translate_emotion(e) for e in webcam_emotions if translate_emotion(e)
         ]
-        tendances = [
-            emotion_category(e) for e in toutes_emotions
-            if emotion_category(e)
-        ]
-        emotion_dominante = compute_dominant(tendances) if tendances else None
+        
+        emotion_dominante = compute_dominant(toutes_emotions) if toutes_emotions else None
 
         # Ajoute aux listes globales pour les moyennes de session
         all_qcm_emotions.extend(qcm_emotions)
         all_webcam_emotions.extend(webcam_emotions)
-        if emotion_dominante:
-            all_general_tendances.append(emotion_dominante)
 
         # Détermine si l'étudiant est anonyme
         anonymous = p.anonymous if hasattr(p, "anonymous") else False
@@ -657,7 +651,8 @@ def build_session_average_data(session_id):
     moyenne_objective = compute_dominant(all_webcam_translated) if all_webcam_translated else None
 
     # Calcule la tendance générale de la session
-    moyenne_generale = compute_dominant(all_general_tendances) if all_general_tendances else None
+    all_emotions_reelles = all_qcm_emotions + all_webcam_translated
+    moyenne_generale = compute_dominant(all_emotions_reelles) if all_emotions_reelles else None
 
     return {
         "moyenne_subjective": moyenne_subjective,
@@ -672,7 +667,7 @@ def build_session_average_data(session_id):
 
 # Mapping des émotions vers une tendance commune.
 # On garde des valeurs internes sans accents pour éviter les incohérences dans les calculs.
-EMOTION_MAP = {
+"""EMOTION_MAP = {
     # Émotions QCM stockées en base
     "motive": "positif",
     "neutre": "neutre",
@@ -695,7 +690,7 @@ EMOTION_MAP = {
     "en colere": "negatif",
     "degoute": "negatif",
 }
-
+""""
 
 def compute_dominant(emotions_list):
     """
@@ -723,7 +718,7 @@ def compute_dominant(emotions_list):
     return max(counts, key=counts.get)
 
 
-def emotion_category(emotion):
+"""def emotion_category(emotion):
     """
     Convertit une émotion brute ou traduite en tendance commune.
 
@@ -747,7 +742,7 @@ def emotion_category(emotion):
     emotion = emotion.strip().lower()
 
     # Retourne la tendance commune si l'émotion existe dans le mapping
-    return EMOTION_MAP.get(emotion)
+    return EMOTION_MAP.get(emotion)"""
 
 
 # ============================================================
