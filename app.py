@@ -690,7 +690,7 @@ def build_session_average_data(session_id):
     "en colere": "negatif",
     "degoute": "negatif",
 }
-""""
+"""
 
 def compute_dominant(emotions_list):
     """
