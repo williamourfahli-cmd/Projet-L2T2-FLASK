@@ -24,10 +24,9 @@ L'objectif est de reconstruire la communication non-verbale entre le professeur 
 ---
 
 ## 2. Aperçu
-
-<!-- Insérer ici un screenshot de la page d'accueil -->
-<!-- Insérer ici un screenshot d'une page de résultats professeur -->
-<!-- Insérer ici un screenshot de la vue étudiant pendant une session -->
+![Page d'acceuil d'EmoTrack ](static/images/screenshot_homepage.png)
+![Page d'un étudiant lors de la session : QCM et retour caméra](static/images/screenshot_student.png)
+![Page résultats côté professeur ](static/images/screenshot_result.png)
 
 ---
 
@@ -52,7 +51,7 @@ L'objectif est de reconstruire la communication non-verbale entre le professeur 
 
 ## 4. Stack technique
 
-<!-- Insérer ici le schéma d'architecture -->
+![Architecture générale d'Emotrack ](static/images/architecture.png)
 
 | Composant | Technologies |
 |---|---|
