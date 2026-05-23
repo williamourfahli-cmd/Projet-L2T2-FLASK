@@ -19,7 +19,7 @@ L'objectif est de reconstruire la communication non-verbale entre le professeur 
 - **Mesure subjective** — l'étudiant évalue lui-même son état émotionnel via un emoji et une échelle de Likert, sans interrompre le cours.
 - **Mesure objective** — l'état émotionnel est capturé automatiquement via l'analyse faciale de la webcam, grâce à la bibliothèque DeepFace.
 
-> Le service DeepFace est déployé séparément sur Hugging Face Spaces. Voir le dépôt dédié : [EmoTrack — Serveur DeepFace](https://github.com/Aymen-hrd/Projet_L2T2_deepface)
+> Le service DeepFace est déployé séparément sur Hugging Face Spaces. Voir le dépôt dédié : [EmoTrack - Serveur DeepFace](https://github.com/Aymen-hrd/Projet_L2T2_deepface)
 
 ---
 
