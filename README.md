@@ -121,10 +121,10 @@ emotrack/
 
 ## 7. Contexte technique
 
-### Mesure objective — DeepFace
+### Mesure objective - DeepFace
 La mesure objective s'appuie sur DeepFace, une bibliothèque Python open source utilisant des modèles pré-entraînés (dont OpenFace) pour analyser les expressions faciales en temps réel. Elle détecte les sept émotions de base : joie, tristesse, colère, surprise, peur, dégoût et neutralité.
 
-### Mesure subjective — QCM émotionnel
+### Mesure subjective - QCM émotionnel
 La mesure subjective repose sur l'auto-évaluation. Elle combine une sélection visuelle par emoji (inspirée des Mood Trackers) et une échelle de Likert numérique, permettant à l'étudiant d'exprimer son état émotionnel en quelques secondes sans interrompre le cours.
 
 ---
